@@ -1,4 +1,4 @@
-package com.example;
+package de.furkan.voicescape;
 
 import com.google.inject.Provides;
 import javax.inject.Inject;
