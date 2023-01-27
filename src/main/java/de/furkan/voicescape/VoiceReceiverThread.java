@@ -52,7 +52,7 @@ public class VoiceReceiverThread implements Runnable {
         float max = volume.getMaximum();
 
         float result = (vol * (max - min) / 100) + min;
-        VoiceScape.getInstance().getLog().debug(String.valueOf(result));
+        VoiceScapePlugin.getInstance().getLog().debug(String.valueOf(result));
         volume.setValue(result);
         inSpeaker.start();
 

@@ -34,7 +34,7 @@ public interface VoiceScapeConfig extends Config {
             section = serverSection
     )
     default boolean connected() {
-        return VoiceScape.getInstance().connected;
+        return VoiceScapePlugin.getInstance().connected;
     }
 
     @ConfigItem(keyName = "usecustomserver",
@@ -43,7 +43,7 @@ public interface VoiceScapeConfig extends Config {
             section = serverSection
     )
     default boolean useCustomServer() {
-        return VoiceScape.getInstance().useCustomServer;
+        return VoiceScapePlugin.getInstance().useCustomServer;
     }
 
 

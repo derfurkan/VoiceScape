@@ -18,10 +18,10 @@ import javax.swing.*;
 @PluginDescriptor(
         name = "VoiceScape"
 )
-public class VoiceScape extends Plugin {
+public class VoiceScapePlugin extends Plugin {
 
 	private final String mainServerIP = "127.0.0.1";
-    private final static VoiceScape voiceScapeInstance = new VoiceScape();
+    private final static VoiceScapePlugin VOICE_SCAPE_PLUGIN_INSTANCE = new VoiceScapePlugin();
     private VoiceEngine voiceEngine;
     private MessageThread messageThread;
     @Inject
@@ -33,8 +33,8 @@ public class VoiceScape extends Plugin {
 		return log;
 	}
 
-	public static VoiceScape getInstance() {
-        return voiceScapeInstance;
+	public static VoiceScapePlugin getInstance() {
+        return VOICE_SCAPE_PLUGIN_INSTANCE;
     }
 
     @Override
