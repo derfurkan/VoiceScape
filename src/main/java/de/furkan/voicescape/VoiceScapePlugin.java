@@ -4,11 +4,9 @@ import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
-import net.runelite.client.RuneLite;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
-import net.runelite.client.externalplugins.ExternalPluginManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import org.slf4j.Logger;
@@ -21,12 +19,6 @@ import javax.swing.*;
         name = "VoiceScape"
 )
 public class VoiceScapePlugin extends Plugin {
-
-	public static void main(String[] args) throws Exception
-	{
-		ExternalPluginManager.loadBuiltin(VoiceScapePlugin.class);
-		RuneLite.main(args);
-	}
 
 	private final String mainServerIP = "127.0.0.1";
     private final static VoiceScapePlugin VOICE_SCAPE_PLUGIN_INSTANCE = new VoiceScapePlugin();
