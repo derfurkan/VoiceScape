@@ -1,6 +1,7 @@
 package de.furkan.voicescape;
 
 import com.google.gson.Gson;
+import com.google.inject.Inject;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.coords.WorldPoint;
@@ -14,7 +15,11 @@ import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
 
+
 public class MessageThread implements Runnable {
+
+    @Inject
+    private Gson gson;
 
     private final Thread thread;
     private PrintWriter out;
@@ -71,7 +76,7 @@ public class MessageThread implements Runnable {
                            }
                         }
                     });
-                    Gson gson = new Gson();
+
                     String json = gson.toJson(allPlayers);
                     sendMessageToServer(json);
                 }
