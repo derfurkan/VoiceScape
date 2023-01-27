@@ -23,7 +23,7 @@ public class VoiceReceiverThread implements Runnable {
     public void run() {
         try {
             soundIn = new DataInputStream(connection.getInputStream());
-            AudioFormat af = new AudioFormat(16000, 8, 2, true, true);
+            AudioFormat af = new AudioFormat(44100,16, 2, true, true);
             DataLine.Info info = new DataLine.Info(SourceDataLine.class, af);
             inSpeaker = (SourceDataLine) AudioSystem.getLine(info);
             inSpeaker.open(af);
@@ -37,7 +37,7 @@ public class VoiceReceiverThread implements Runnable {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            stop();
         }
     }
 

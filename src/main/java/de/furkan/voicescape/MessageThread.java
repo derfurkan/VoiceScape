@@ -1,7 +1,6 @@
 package de.furkan.voicescape;
 
 import com.google.gson.Gson;
-import com.google.inject.Inject;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.coords.WorldPoint;
@@ -17,10 +16,6 @@ import java.util.TimerTask;
 
 
 public class MessageThread implements Runnable {
-
-    @Inject
-    private Gson gson;
-
     private final Thread thread;
     private PrintWriter out;
     private BufferedReader in;
@@ -28,7 +23,10 @@ public class MessageThread implements Runnable {
     private final Client client;
     private final VoiceScapeConfig config;
 
-    public MessageThread(String ip, int port, Client client, VoiceScapeConfig config) {
+    private final Gson gson;
+
+    public MessageThread(String ip, int port, Client client, VoiceScapeConfig config,Gson gson) {
+        this.gson = gson;
         this.config = config;
         this.client = client;
         this.thread = new Thread(this, "MessageThread");
@@ -61,7 +59,9 @@ public class MessageThread implements Runnable {
     @Override
     public void run() {
 
+
         new Timer().schedule(new TimerTask() {
+
             @Override
             public void run() {
                 if (client.getGameState() == GameState.LOGGED_IN) {

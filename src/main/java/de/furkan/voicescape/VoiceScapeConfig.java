@@ -5,10 +5,12 @@ import net.runelite.client.config.*;
 @ConfigGroup("VoiceScape")
 public interface VoiceScapeConfig extends Config {
 
+
+
     @ConfigSection(
             name = "Voice",
             description = "Voice settings",
-            position = 0
+            position = 1
     )
     String voiceSection = "voice";
 
@@ -19,6 +21,8 @@ public interface VoiceScapeConfig extends Config {
     )
     String serverSection = "Server";
 
+
+
     @ConfigItem(keyName = "loopback",
             name = "Loopback",
             description = "Hear yourself",
@@ -28,22 +32,13 @@ public interface VoiceScapeConfig extends Config {
         return false;
     }
 
-    @ConfigItem(keyName = "connected",
-            name = "Connected",
-            description = "Connected to server",
-            section = serverSection
+    @ConfigItem(keyName = "muteself",
+            name = "Mute Self",
+            description = "Mute yourself",
+            section = voiceSection
     )
-    default boolean connected() {
-        return VoiceScapePlugin.getInstance().connected;
-    }
-
-    @ConfigItem(keyName = "usecustomserver",
-            name = "Custom Server",
-            description = "Connect to custom server",
-            section = serverSection
-    )
-    default boolean useCustomServer() {
-        return VoiceScapePlugin.getInstance().useCustomServer;
+    default boolean muteSelf() {
+        return false;
     }
 
 
@@ -56,6 +51,7 @@ public interface VoiceScapeConfig extends Config {
             description = "Volume of other players",
             section = voiceSection
     )
+    @Units(Units.PERCENT)
     default int volume() {
         return 100;
     }
@@ -73,6 +69,26 @@ public interface VoiceScapeConfig extends Config {
         return 30;
     }
 
+
+
+    @ConfigItem(keyName = "connected",
+            name = "Connect to main server",
+            description = "Connected to server",
+            section = serverSection,
+            position = 0
+    )
+    default boolean connected() {
+        return VoiceScapePlugin.getInstance().connected;
+    }
+
+    @ConfigItem(keyName = "usecustomserver",
+            name = "Connect to custom server",
+            description = "Connect to custom server",
+            section = serverSection
+    )
+    default boolean useCustomServer() {
+        return VoiceScapePlugin.getInstance().useCustomServer;
+    }
 
     @ConfigItem(keyName = "customserverip",
             name = "Custom Server IP",

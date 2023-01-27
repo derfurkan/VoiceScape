@@ -1,5 +1,6 @@
 package de.furkan.voicescape;
 
+import com.google.gson.Gson;
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -26,6 +27,9 @@ public class VoiceScapePlugin extends Plugin {
     private MessageThread messageThread;
     @Inject
     private Client client;
+
+	@com.google.inject.Inject
+	private Gson gson;
     @Inject
     private VoiceScapeConfig config;
 
@@ -37,9 +41,10 @@ public class VoiceScapePlugin extends Plugin {
         return VOICE_SCAPE_PLUGIN_INSTANCE;
     }
 
-    @Override
+	@Override
     protected void startUp() throws Exception {
 		resetConfiguration();
+
     }
 
     @Override
@@ -56,7 +61,7 @@ public class VoiceScapePlugin extends Plugin {
     public void onConfigChanged(ConfigChanged configChanged) {
         if (configChanged.getKey().equals("connected")) {
 
-			if(client.getGameState() != GameState.LOGGED_IN) {
+			if(config.connected()&&client.getGameState() != GameState.LOGGED_IN) {
 				JOptionPane.showMessageDialog(null, "Please log in first!", "Error", JOptionPane.ERROR_MESSAGE);
 				return;
 			}
@@ -74,7 +79,7 @@ public class VoiceScapePlugin extends Plugin {
             }
         } else if (configChanged.getKey().equals("usecustomserver")) {
 
-			if(client.getGameState() != GameState.LOGGED_IN) {
+			if(config.useCustomServer()&&client.getGameState() != GameState.LOGGED_IN) {
 				JOptionPane.showMessageDialog(null, "Please log in first!", "Error", JOptionPane.ERROR_MESSAGE);
 				return;
 			}
@@ -99,7 +104,7 @@ public class VoiceScapePlugin extends Plugin {
 
 	private void runThreads(String ip) {
 		voiceEngine = new VoiceEngine(ip, 24444, config);
-		messageThread = new MessageThread(ip, 25555, client, config);
+		messageThread = new MessageThread(ip, 25555, client, config,gson);
 	}
 
 	private void shutdownAll() {
@@ -108,6 +113,7 @@ public class VoiceScapePlugin extends Plugin {
 		messageThread.stopConnection();
 		voiceEngine = null;
 		messageThread = null;
+		JOptionPane.showMessageDialog(null, "Disconnected from server!", "Disconnected", JOptionPane.INFORMATION_MESSAGE);
 	}
 
 
