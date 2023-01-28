@@ -6,7 +6,6 @@ import net.runelite.api.GameState;
 import net.runelite.api.coords.WorldPoint;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
@@ -15,7 +14,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class MessageThread implements Runnable {
-  private final Thread thread;
+  public final Thread thread;
   private final Client client;
   private final VoiceScapeConfig config;
   private final Gson gson;
@@ -29,7 +28,6 @@ public class MessageThread implements Runnable {
     this.config = config;
     this.client = client;
     this.thread = new Thread(this, "MessageThread");
-    this.thread.start();
     try {
       connection = new Socket(ip, port);
       out = new PrintWriter(connection.getOutputStream(), true);
@@ -38,6 +36,7 @@ public class MessageThread implements Runnable {
     } catch (Exception e) {
       thread.interrupt();
     }
+    this.thread.start();
   }
 
   @Override
@@ -84,19 +83,8 @@ public class MessageThread implements Runnable {
                 }
               }
             },
-            5000,
-            1000);
+            3000,
+            3000);
 
-  }
-
-  public void stopMessageThread() {
-    try {
-      connection.close();
-      in.close();
-      out.close();
-      thread.interrupt();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
   }
 }

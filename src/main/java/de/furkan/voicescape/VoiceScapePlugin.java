@@ -32,11 +32,7 @@ public class VoiceScapePlugin extends Plugin {
 
   @Override
   protected void startUp() throws Exception {
-    if (config.connected()) {
-      runThreads(mainServerIP);
-    } else if (config.useCustomServer()) {
-      runThreads(config.customServerIP());
-    }
+
   }
 
   @Override
@@ -100,8 +96,8 @@ public class VoiceScapePlugin extends Plugin {
 
   private void shutdownAll() {
     messageThread.out.println("disconnect");
-    voiceEngine.stopEngine();
-    messageThread.stopMessageThread();
+    voiceEngine.thread.interrupt();
+    messageThread.thread.interrupt();
     voiceEngine = null;
     messageThread = null;
   }

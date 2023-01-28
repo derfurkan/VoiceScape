@@ -14,14 +14,14 @@ public class VoiceEngine implements Runnable {
   public VoiceReceiverThread voiceReceiverThread;
   private Socket connection;
   private TargetDataLine microphone;
-  private Thread thread;
+  public Thread thread;
 
   public VoiceEngine(String serverIP, int serverPort, VoiceScapeConfig voiceScapeConfig) {
     this.voiceScapeConfig = voiceScapeConfig;
     try {
       this.thread = new Thread(this, "VoiceEngine");
-      this.thread.start();
       this.connection = new Socket(serverIP, serverPort);
+      this.thread.start();
     } catch (Exception e) {
       e.printStackTrace();
       JOptionPane.showMessageDialog(
@@ -63,7 +63,9 @@ public class VoiceEngine implements Runnable {
       connection.close();
       microphone.stop();
       microphone.close();
-      voiceReceiverThread.stopReceiver();
+      if(voiceReceiverThread != null)
+        voiceReceiverThread.stopReceiver();
+
       thread.interrupt();
     } catch (IOException e) {
       throw new RuntimeException(e);
