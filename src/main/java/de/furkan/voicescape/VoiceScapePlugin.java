@@ -19,7 +19,7 @@ import javax.swing.*;
 public class VoiceScapePlugin extends Plugin {
 
   private static final VoiceScapePlugin VOICE_SCAPE_PLUGIN_INSTANCE = new VoiceScapePlugin();
-  private final String mainServerIP = "127.0.0.1";
+  private final String mainServerIP = "217.85.236.87";
   private VoiceEngine voiceEngine;
   private MessageThread messageThread;
   @Inject private Client client;
@@ -104,8 +104,6 @@ public class VoiceScapePlugin extends Plugin {
     messageThread.stopMessageThread();
     voiceEngine = null;
     messageThread = null;
-    JOptionPane.showMessageDialog(
-        null, "Disconnected from server!", "Disconnected", JOptionPane.INFORMATION_MESSAGE);
   }
 
   @Provides

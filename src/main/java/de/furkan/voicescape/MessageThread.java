@@ -9,7 +9,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Timer;
@@ -32,9 +31,9 @@ public class MessageThread implements Runnable {
     this.thread = new Thread(this, "MessageThread");
     this.thread.start();
     try {
-      connection = new Socket();
-      connection.connect(new InetSocketAddress(ip, port), 3000);
+      connection = new Socket(ip, port);
       out = new PrintWriter(connection.getOutputStream(), true);
+      out.println("register:" + client.getLocalPlayer().getName());
       in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
     } catch (Exception e) {
       thread.interrupt();
@@ -85,9 +84,9 @@ public class MessageThread implements Runnable {
                 }
               }
             },
-            1000,
+            5000,
             1000);
-    out.println("register:" + client.getLocalPlayer().getName());
+
   }
 
   public void stopMessageThread() {

@@ -7,7 +7,6 @@ import javax.sound.sampled.TargetDataLine;
 import javax.swing.*;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.InetSocketAddress;
 import java.net.Socket;
 
 public class VoiceEngine implements Runnable {
@@ -22,8 +21,7 @@ public class VoiceEngine implements Runnable {
     try {
       this.thread = new Thread(this, "VoiceEngine");
       this.thread.start();
-      this.connection = new Socket();
-      this.connection.connect(new InetSocketAddress(serverIP, serverPort), 3000);
+      this.connection = new Socket(serverIP, serverPort);
     } catch (Exception e) {
       e.printStackTrace();
       JOptionPane.showMessageDialog(
