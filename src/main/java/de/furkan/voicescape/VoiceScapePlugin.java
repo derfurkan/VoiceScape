@@ -10,115 +10,106 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import org.slf4j.Logger;
 
 import javax.inject.Inject;
 import javax.swing.*;
 
 @Slf4j
-@PluginDescriptor(
-        name = "VoiceScape"
-)
+@PluginDescriptor(name = "VoiceScape")
 public class VoiceScapePlugin extends Plugin {
 
-	private final String mainServerIP = "127.0.0.1";
-    private final static VoiceScapePlugin VOICE_SCAPE_PLUGIN_INSTANCE = new VoiceScapePlugin();
-    private VoiceEngine voiceEngine;
-    private MessageThread messageThread;
-    @Inject
-    private Client client;
+  private static final VoiceScapePlugin VOICE_SCAPE_PLUGIN_INSTANCE = new VoiceScapePlugin();
+  private final String mainServerIP = "127.0.0.1";
+  private VoiceEngine voiceEngine;
+  private MessageThread messageThread;
+  @Inject private Client client;
+  @com.google.inject.Inject private Gson gson;
+  @Inject private VoiceScapeConfig config;
 
-	@com.google.inject.Inject
-	private Gson gson;
-    @Inject
-    private VoiceScapeConfig config;
+  public static VoiceScapePlugin getInstance() {
+    return VOICE_SCAPE_PLUGIN_INSTANCE;
+  }
 
-	public Logger getLog() {
-		return log;
-	}
+  @Override
+  protected void startUp() throws Exception {
+    if (config.connected()) {
+      runThreads(mainServerIP);
+    } else if (config.useCustomServer()) {
+      runThreads(config.customServerIP());
+    }
+  }
 
-	public static VoiceScapePlugin getInstance() {
-        return VOICE_SCAPE_PLUGIN_INSTANCE;
+  @Override
+  protected void shutDown() throws Exception {
+    if (voiceEngine != null || messageThread != null) {
+      shutdownAll();
+    }
+  }
+
+  @Subscribe
+  public void onConfigChanged(ConfigChanged configChanged) {
+
+    if (client.getGameState() != GameState.LOGGED_IN) {
+      JOptionPane.showMessageDialog(
+          null, "Please log in first!", "Error", JOptionPane.ERROR_MESSAGE);
+      return;
     }
 
-	@Override
-    protected void startUp() throws Exception {
-		resetConfiguration();
+    if (configChanged.getKey().equals("connected")) {
 
+      if (config.useCustomServer()) {
+        JOptionPane.showMessageDialog(
+            null,
+            "Please disconnect from custom server first!",
+            "Error",
+            JOptionPane.ERROR_MESSAGE);
+        return;
+      }
+
+      if (!config.connected() && voiceEngine != null && messageThread != null) {
+        shutdownAll();
+      } else if (config.connected() && voiceEngine == null && messageThread == null) {
+        runThreads(mainServerIP);
+      }
+
+    } else if (configChanged.getKey().equals("usecustomserver")) {
+
+      if (config.connected()) {
+        JOptionPane.showMessageDialog(
+            null, "Please disconnect first!", "Error", JOptionPane.ERROR_MESSAGE);
+        return;
+      }
+
+      if (!config.useCustomServer() && voiceEngine != null && messageThread != null) {
+        shutdownAll();
+      } else if (config.useCustomServer() && voiceEngine == null && messageThread == null) {
+        runThreads(config.customServerIP());
+      }
+
+    } else if (configChanged.getKey().equals("volume")) {
+      if (voiceEngine != null) {
+        voiceEngine.voiceReceiverThread.updateSettings();
+      }
     }
+  }
 
-    @Override
-    protected void shutDown() throws Exception {
-		if (voiceEngine != null && messageThread != null) {
-			shutdownAll();
-		}
-    }
+  private void runThreads(String ip) {
+    voiceEngine = new VoiceEngine(ip, 24444, config);
+    messageThread = new MessageThread(ip, 25555, client, config, gson);
+  }
 
-	public boolean useCustomServer = false;
-	public boolean connected = false;
+  private void shutdownAll() {
+    messageThread.out.println("disconnect");
+    voiceEngine.stopEngine();
+    messageThread.stopMessageThread();
+    voiceEngine = null;
+    messageThread = null;
+    JOptionPane.showMessageDialog(
+        null, "Disconnected from server!", "Disconnected", JOptionPane.INFORMATION_MESSAGE);
+  }
 
-    @Subscribe
-    public void onConfigChanged(ConfigChanged configChanged) {
-        if (configChanged.getKey().equals("connected")) {
-
-			if(config.connected()&&client.getGameState() != GameState.LOGGED_IN) {
-				JOptionPane.showMessageDialog(null, "Please log in first!", "Error", JOptionPane.ERROR_MESSAGE);
-				return;
-			}
-
-			if(config.useCustomServer()) {
-				JOptionPane.showMessageDialog(null, "Please disconnect from custom server first!", "Error", JOptionPane.ERROR_MESSAGE);
-				configChanged.setOldValue(configChanged.getOldValue());
-				connected = !connected;
-				return;
-			}
-			if (!config.connected() && voiceEngine != null && messageThread != null) {
-				shutdownAll();
-            } else if (config.connected() && voiceEngine == null && messageThread == null) {
-				runThreads(mainServerIP);
-            }
-        } else if (configChanged.getKey().equals("usecustomserver")) {
-
-			if(config.useCustomServer()&&client.getGameState() != GameState.LOGGED_IN) {
-				JOptionPane.showMessageDialog(null, "Please log in first!", "Error", JOptionPane.ERROR_MESSAGE);
-				return;
-			}
-
-			if(config.connected()) {
-				JOptionPane.showMessageDialog(null, "Please disconnect first!", "Error", JOptionPane.ERROR_MESSAGE);
-				configChanged.setNewValue(configChanged.getOldValue());
-				useCustomServer = !useCustomServer;
-				return;
-			}
-			if(config.useCustomServer()) {
-				runThreads(config.customServerIP());
-			} else {
-				shutdownAll();
-			}
-		}else if (configChanged.getKey().equals("volume")) {
-			if (voiceEngine != null) {
-				voiceEngine.voiceReceiverThread.updateSettings();
-			}
-		}
-    }
-
-	private void runThreads(String ip) {
-		voiceEngine = new VoiceEngine(ip, 24444, config);
-		messageThread = new MessageThread(ip, 25555, client, config,gson);
-	}
-
-	private void shutdownAll() {
-		messageThread.sendMessageToServer("disconnect");
-		voiceEngine.stopEngine();
-		messageThread.stopConnection();
-		voiceEngine = null;
-		messageThread = null;
-		JOptionPane.showMessageDialog(null, "Disconnected from server!", "Disconnected", JOptionPane.INFORMATION_MESSAGE);
-	}
-
-
-    @Provides
-    VoiceScapeConfig provideConfig(ConfigManager configManager) {
-        return configManager.getConfig(VoiceScapeConfig.class);
-    }
+  @Provides
+  VoiceScapeConfig provideConfig(ConfigManager configManager) {
+    return configManager.getConfig(VoiceScapeConfig.class);
+  }
 }
