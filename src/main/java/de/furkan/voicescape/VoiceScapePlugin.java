@@ -5,6 +5,7 @@ import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.events.GameStateChanged;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -12,7 +13,6 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 
 import javax.inject.Inject;
-import javax.swing.*;
 
 @Slf4j
 @PluginDescriptor(name = "VoiceScape")
@@ -32,7 +32,26 @@ public class VoiceScapePlugin extends Plugin {
 
   @Override
   protected void startUp() throws Exception {
+    if(client.getGameState() == GameState.LOGGED_IN) {
+      if(config.useCustomServer())
+        runThreads(config.customServerIP());
+      else
+        runThreads(mainServerIP);
+    }
+  }
 
+  @Subscribe
+  public void onGameStateChanged(GameStateChanged gameStateChanged) {
+    if (gameStateChanged.getGameState() == GameState.LOGGED_IN && (voiceEngine == null || messageThread == null)) {
+        if (!config.useCustomServer()) {
+          runThreads(mainServerIP);
+        } else {
+          runThreads(config.customServerIP());
+        }
+      }
+    if (gameStateChanged.getGameState() != GameState.LOGGED_IN && (voiceEngine != null || messageThread != null)) {
+        shutdownAll();
+      }
   }
 
   @Override
@@ -45,40 +64,12 @@ public class VoiceScapePlugin extends Plugin {
   @Subscribe
   public void onConfigChanged(ConfigChanged configChanged) {
 
-    if (client.getGameState() != GameState.LOGGED_IN) {
-      JOptionPane.showMessageDialog(
-          null, "Please log in first!", "Error", JOptionPane.ERROR_MESSAGE);
-      return;
-    }
+    if (configChanged.getKey().equals("usecustomserver")) {
+      shutdownAll();
 
-    if (configChanged.getKey().equals("connected")) {
-
-      if (config.useCustomServer()) {
-        JOptionPane.showMessageDialog(
-            null,
-            "Please disconnect from custom server first!",
-            "Error",
-            JOptionPane.ERROR_MESSAGE);
-        return;
-      }
-
-      if (!config.connected() && voiceEngine != null && messageThread != null) {
-        shutdownAll();
-      } else if (config.connected() && voiceEngine == null && messageThread == null) {
+      if (!config.useCustomServer()) {
         runThreads(mainServerIP);
-      }
-
-    } else if (configChanged.getKey().equals("usecustomserver")) {
-
-      if (config.connected()) {
-        JOptionPane.showMessageDialog(
-            null, "Please disconnect first!", "Error", JOptionPane.ERROR_MESSAGE);
-        return;
-      }
-
-      if (!config.useCustomServer() && voiceEngine != null && messageThread != null) {
-        shutdownAll();
-      } else if (config.useCustomServer() && voiceEngine == null && messageThread == null) {
+      } else if (config.useCustomServer()) {
         runThreads(config.customServerIP());
       }
 
@@ -90,14 +81,21 @@ public class VoiceScapePlugin extends Plugin {
   }
 
   private void runThreads(String ip) {
-    voiceEngine = new VoiceEngine(ip, 24444, config);
-    messageThread = new MessageThread(ip, 25555, client, config, gson);
+ new Thread(() -> {
+   voiceEngine = new VoiceEngine(ip, 24444, config);
+   voiceEngine.completableFuture.whenCompleteAsync((aBoolean, throwable) -> {
+     if(aBoolean) {
+       messageThread = new MessageThread(ip, 25555, client, config, gson);
+     }
+   });
+    }).start();
   }
 
   private void shutdownAll() {
-    messageThread.out.println("disconnect");
+
     voiceEngine.thread.interrupt();
-    messageThread.thread.interrupt();
+    if(messageThread != null)
+      messageThread.thread.interrupt();
     voiceEngine = null;
     messageThread = null;
   }

@@ -34,6 +34,7 @@ public class MessageThread implements Runnable {
       out.println("register:" + client.getLocalPlayer().getName());
       in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
     } catch (Exception e) {
+
       thread.interrupt();
     }
     this.thread.start();

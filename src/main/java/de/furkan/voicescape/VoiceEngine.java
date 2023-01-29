@@ -1,13 +1,11 @@
 package de.furkan.voicescape;
 
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.DataLine;
-import javax.sound.sampled.TargetDataLine;
+import javax.sound.sampled.*;
 import javax.swing.*;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.concurrent.CompletableFuture;
 
 public class VoiceEngine implements Runnable {
   private final VoiceScapeConfig voiceScapeConfig;
@@ -16,19 +14,31 @@ public class VoiceEngine implements Runnable {
   private TargetDataLine microphone;
   public Thread thread;
 
+  public final CompletableFuture<Boolean> completableFuture;
+
   public VoiceEngine(String serverIP, int serverPort, VoiceScapeConfig voiceScapeConfig) {
     this.voiceScapeConfig = voiceScapeConfig;
+    completableFuture = new CompletableFuture<>();
     try {
       this.thread = new Thread(this, "VoiceEngine");
       this.connection = new Socket(serverIP, serverPort);
       this.thread.start();
+      completableFuture.complete(true);
     } catch (Exception e) {
+      completableFuture.complete(false);
       e.printStackTrace();
-      JOptionPane.showMessageDialog(
-          null,
-          "Could not connect to the server. Please try again later.",
-          "Error",
-          JOptionPane.ERROR_MESSAGE);
+
+      SwingUtilities.invokeLater(new Runnable() {
+        public void run() {
+          JOptionPane.showMessageDialog(
+                  null,
+                  "Could not connect to the server. Please try again later.",
+                  "Error",
+                  JOptionPane.ERROR_MESSAGE);
+        }
+      });
+
+
       thread.interrupt();
     }
   }
@@ -53,7 +63,23 @@ public class VoiceEngine implements Runnable {
           dos.write(new byte[0], 0, 0);
         }
       }
+    } catch (LineUnavailableException e) {
+
+
+      SwingUtilities.invokeLater(new Runnable() {
+        public void run() {
+          JOptionPane.showConfirmDialog(
+                  null,
+                  "Could not open microphone. Please check your microphone.",
+                  "Error",
+                  JOptionPane.ERROR_MESSAGE);
+        }
+      });
+
+      e.printStackTrace();
+      stopEngine();
     } catch (Exception e) {
+      e.printStackTrace();
       stopEngine();
     }
   }

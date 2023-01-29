@@ -55,19 +55,9 @@ public interface VoiceScapeConfig extends Config {
   }
 
   @ConfigItem(
-      keyName = "connected",
-      name = "Connect to main server",
-      description = "Connected to server",
-      section = serverSection,
-      position = 0)
-  default boolean connected() {
-    return false;
-  }
-
-  @ConfigItem(
       keyName = "usecustomserver",
-      name = "Connect to custom server",
-      description = "Connect to custom server",
+      name = "Connect to custom server instead",
+      description = "Connect to custom server instead of the default one",
       section = serverSection)
   default boolean useCustomServer() {
     return false;
