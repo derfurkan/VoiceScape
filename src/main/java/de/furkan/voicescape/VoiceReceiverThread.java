@@ -15,7 +15,7 @@ public class VoiceReceiverThread implements Runnable {
     this.config = voiceScapeConfig;
     this.thread = new Thread(this, "VoiceReceiverThread");
     this.connection = connection;
-    thread.start();
+    this.thread.start();
   }
 
   public void run() {
