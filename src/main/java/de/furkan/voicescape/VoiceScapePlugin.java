@@ -44,6 +44,9 @@ public class VoiceScapePlugin extends Plugin {
   protected void startUp() throws Exception {
     isRunning = true;
     if (client.getGameState() == GameState.LOGGED_IN) {
+      if (voiceEngine != null && messageThread != null) {
+        shutdownAll();
+      }
       if (config.useCustomServer()) runPluginThreads(config.customServerIP());
       else runPluginThreads(mainServerIP);
     }
@@ -91,6 +94,26 @@ public class VoiceScapePlugin extends Plugin {
     }
   }
 
+  // Useless code for now but will be used later on for muting and unmuting players.
+
+  /*  @Subscribe
+  public void onCommandExecuted(net.runelite.api.events. commandExecuted) {
+    System.out.println(commandExecuted.getCommand());
+    if (commandExecuted.getCommand().contains(" ") && (commandExecuted.getCommand().split(" ")[0].equals("mute") || commandExecuted.getCommand().split(" ")[0].equals("unmute"))
+        ) {
+      String command = commandExecuted.getCommand().split(" ")[0];
+      String playerName = commandExecuted.getCommand().split(" ")[1];
+      if (messageThread != null && messageThread.out != null) {
+        messageThread.out.println(command + " " + playerName);
+        client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", command.equals("mute") ? "Muted " + playerName : "Unmuted " + playerName, "");
+      } else {
+        client.addChatMessage(
+            ChatMessageType.GAMEMESSAGE, "", "You are not connected to a server!", "");
+      }
+    }
+
+  }*/
+
   @Subscribe
   public void onConfigChanged(final ConfigChanged configChanged) {
     if (configChanged.getKey().equals("usecustomserver")) {
@@ -113,7 +136,7 @@ public class VoiceScapePlugin extends Plugin {
         voiceEngine.voiceReceiverThread.updateSettings();
       }
     } else if (configChanged.getKey().equals("loopback")) {
-      if (config.loopback()) {
+      if (config.loopback() && !nearSpawnedPlayers.contains(client.getLocalPlayer())) {
         nearSpawnedPlayers.add(client.getLocalPlayer());
       } else {
         nearSpawnedPlayers.remove(client.getLocalPlayer());
@@ -136,11 +159,9 @@ public class VoiceScapePlugin extends Plugin {
   }
 
   private void shutdownAll() {
-    System.out.println("Shutting down all threads");
-    if (messageThread != null) {
-      messageThread.out.println("disconnect");
-      messageThread.thread.interrupt();
-    }
+    if (messageThread != null) messageThread.thread.interrupt();
+    if (messageThread != null && messageThread.out != null) messageThread.out.println("disconnect");
+
     voiceEngine.stopEngine();
     voiceEngine = null;
     messageThread = null;

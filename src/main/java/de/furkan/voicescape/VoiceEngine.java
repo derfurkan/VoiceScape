@@ -78,7 +78,8 @@ public class VoiceEngine implements Runnable {
               public void run() {
                 JOptionPane.showMessageDialog(
                     null,
-                    "Connection to the voice server lost.\nHere are a few reasons why this could happen:\n- You are not connected to the internet\n- The server is not online\n- The server has rejected your request because of Spam\n- You are using a proxy or VPN\n- You are using a firewall that blocks the connection to the server",
+                    "Connection to the voice server has been lost.\nHere are a few reasons why this could happen:\n- The server is not online\n- The server has rejected your request\n- You are using a proxy or VPN\n- You firewall/antivirus blocks the connection to the server\n\n"
+                        + "Please wait one minute and try again.",
                     "VoiceScape - Error",
                     JOptionPane.ERROR_MESSAGE);
               }

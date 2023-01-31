@@ -95,7 +95,6 @@ public class MessageThread implements Runnable {
   }
 
   public void stop() {
-    System.out.println("Stopping MessageThread");
     out.close();
     thread.interrupt();
   }
