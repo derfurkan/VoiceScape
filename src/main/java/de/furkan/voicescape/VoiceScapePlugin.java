@@ -4,15 +4,18 @@ import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Player;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.PlayerDespawned;
 import net.runelite.api.events.PlayerSpawned;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.menus.MenuManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 
@@ -35,6 +38,9 @@ public class VoiceScapePlugin extends Plugin {
   @Inject private Client client;
   @com.google.inject.Inject private Gson gson;
   @Inject private VoiceScapeConfig config;
+  @Inject private MenuManager menuManager;
+
+
 
   public static VoiceScapePlugin getInstance() {
     return VOICE_SCAPE_PLUGIN_INSTANCE;
@@ -42,6 +48,9 @@ public class VoiceScapePlugin extends Plugin {
 
   @Override
   protected void startUp() throws Exception {
+    menuManager.addPlayerMenuItem("Mute");
+    menuManager.addPlayerMenuItem("Unmute");
+
     isRunning = true;
     if (client.getGameState() == GameState.LOGGED_IN) {
       if (voiceEngine != null && messageThread != null) {
@@ -49,6 +58,16 @@ public class VoiceScapePlugin extends Plugin {
       }
       if (config.useCustomServer()) runPluginThreads(config.customServerIP());
       else runPluginThreads(mainServerIP);
+    }
+  }
+
+
+  @Subscribe
+  public void onMenuOptionClicked(MenuOptionClicked menuOptionClicked) {
+    if (messageThread != null && (menuOptionClicked.getMenuOption().equals("Mute") || menuOptionClicked.getMenuOption().equals("Unmute")) && menuOptionClicked.getMenuTarget().contains(">") && menuOptionClicked.getMenuTarget().contains("<")) {
+      String command = menuOptionClicked.getMenuOption().equals("Mute") ? "mute " : "unmute ";
+      messageThread.out.println(command + menuOptionClicked.getMenuTarget().split(">")[1].split("<")[0]);
+      client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",menuOptionClicked.getMenuOption().equals("Mute") ? "Muted " + menuOptionClicked.getMenuTarget().split(">")[1].split("<")[0] : "Unmuted " + menuOptionClicked.getMenuTarget().split(">")[1].split("<")[0], "");
     }
   }
 
@@ -147,11 +166,12 @@ public class VoiceScapePlugin extends Plugin {
   private void runPluginThreads(String ip) {
     new Thread(
             () -> {
-              messageThread = new MessageThread(ip, 25555, client, config, gson);
-              messageThread.completableFuture.whenCompleteAsync(
+              voiceEngine = new VoiceEngine(ip, 24444, config);
+              voiceEngine.completableFuture.whenCompleteAsync(
                   (aBoolean, throwable) -> {
                     if (aBoolean) {
-                      voiceEngine = new VoiceEngine(ip, 24444, config, messageThread);
+                      messageThread = new MessageThread(ip, 25555, client, config, gson);
+                      voiceEngine.messageThread = messageThread;
                     }
                   });
             })

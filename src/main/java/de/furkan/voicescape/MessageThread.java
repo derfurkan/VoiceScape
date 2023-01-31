@@ -6,51 +6,39 @@ import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Player;
 
-import javax.swing.*;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.CompletableFuture;
 
 public class MessageThread implements Runnable {
   public final Thread thread;
-  public final CompletableFuture<Boolean> completableFuture;
+
   private final Client client;
   private final VoiceScapeConfig config;
   private final Gson gson;
   public PrintWriter out;
+
+  private Socket connection;
   public ArrayList<Player> lastUpdate = Lists.newArrayList();
 
   public MessageThread(
       String ip, int port, Client client, VoiceScapeConfig config, Gson gsonInstance) {
-    completableFuture = new CompletableFuture<>();
     this.gson = gsonInstance;
     this.config = config;
     this.client = client;
     this.thread = new Thread(this, "MessageThread");
     try {
-      Socket connection = new Socket(ip, port);
+      connection = new Socket(ip, port);
       out = new PrintWriter(connection.getOutputStream(), true);
       out.println("register:" + client.getLocalPlayer().getName());
-      completableFuture.complete(true);
+      this.thread.start();
     } catch (Exception e) {
-      completableFuture.complete(false);
       e.printStackTrace();
-      SwingUtilities.invokeLater(
-          new Runnable() {
-            public void run() {
-              JOptionPane.showMessageDialog(
-                  null,
-                  "Could not connect to the server. Please try again later.",
-                  "VoiceScape - Error",
-                  JOptionPane.ERROR_MESSAGE);
-            }
-          });
       thread.interrupt();
     }
-    this.thread.start();
   }
 
   @Override
@@ -69,6 +57,7 @@ public class MessageThread implements Runnable {
                   ArrayList<String> playerNames = Lists.newArrayList();
                   VoiceScapePlugin.nearSpawnedPlayers.forEach(
                       player -> {
+
                         if (player == null || player.getName() == null) return;
                         if (player.getName().equals(client.getLocalPlayer().getName())
                             && !config.loopback()) return;
@@ -95,7 +84,12 @@ public class MessageThread implements Runnable {
   }
 
   public void stop() {
-    out.close();
-    thread.interrupt();
+    try {
+      connection.close();
+      out.close();
+      thread.interrupt();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 }
