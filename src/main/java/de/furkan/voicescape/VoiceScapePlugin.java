@@ -113,26 +113,6 @@ public class VoiceScapePlugin extends Plugin {
     }
   }
 
-  // Useless code for now but will be used later on for muting and unmuting players.
-
-  /*  @Subscribe
-  public void onCommandExecuted(net.runelite.api.events. commandExecuted) {
-    System.out.println(commandExecuted.getCommand());
-    if (commandExecuted.getCommand().contains(" ") && (commandExecuted.getCommand().split(" ")[0].equals("mute") || commandExecuted.getCommand().split(" ")[0].equals("unmute"))
-        ) {
-      String command = commandExecuted.getCommand().split(" ")[0];
-      String playerName = commandExecuted.getCommand().split(" ")[1];
-      if (messageThread != null && messageThread.out != null) {
-        messageThread.out.println(command + " " + playerName);
-        client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", command.equals("mute") ? "Muted " + playerName : "Unmuted " + playerName, "");
-      } else {
-        client.addChatMessage(
-            ChatMessageType.GAMEMESSAGE, "", "You are not connected to a server!", "");
-      }
-    }
-
-  }*/
-
   @Subscribe
   public void onConfigChanged(final ConfigChanged configChanged) {
     if (configChanged.getKey().equals("usecustomserver")) {
