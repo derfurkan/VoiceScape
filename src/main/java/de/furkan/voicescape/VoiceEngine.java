@@ -34,6 +34,17 @@ public class VoiceEngine implements Runnable {
 
       AudioFormat audioFormat = new AudioFormat(44100, 16, 2, true, true);
       DataLine.Info info = new DataLine.Info(TargetDataLine.class, audioFormat);
+
+        Mixer.Info[] mixerInfo = AudioSystem.getMixerInfo();
+        for (Mixer.Info info1 : mixerInfo) {
+            Mixer mixer = AudioSystem.getMixer(info1);
+            if(mixer.getMixerInfo().getName().equals(VoiceScapePlugin.getInstance().microphoneName)) {
+            info = (DataLine.Info) mixer.getLine(info);
+            break;
+            }
+        }
+
+
       microphone = (TargetDataLine) AudioSystem.getLine(info);
       microphone.open(audioFormat);
       microphone.start();

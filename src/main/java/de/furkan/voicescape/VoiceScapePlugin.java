@@ -20,6 +20,8 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 
 import javax.inject.Inject;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Mixer;
 import javax.swing.*;
 import java.util.ArrayList;
 import java.util.Timer;
@@ -40,6 +42,8 @@ public class VoiceScapePlugin extends Plugin {
   @Inject private VoiceScapeConfig config;
   @Inject private MenuManager menuManager;
 
+  public String microphoneName;
+  public String speakerName;
 
 
   public static VoiceScapePlugin getInstance() {
@@ -48,17 +52,117 @@ public class VoiceScapePlugin extends Plugin {
 
   @Override
   protected void startUp() throws Exception {
-    menuManager.addPlayerMenuItem("Mute");
-    menuManager.addPlayerMenuItem("Unmute");
 
-    isRunning = true;
-    if (client.getGameState() == GameState.LOGGED_IN) {
-      if (voiceEngine != null && messageThread != null) {
-        shutdownAll();
-      }
-      if (config.useCustomServer()) runPluginThreads(config.customServerIP());
-      else runPluginThreads(mainServerIP);
+    if(AudioSystem.getMixerInfo().length == 0) {
+      JOptionPane.showMessageDialog(null, "No audio devices found. Please check your audio settings.", "VoiceScape - No audio devices found!", JOptionPane.ERROR_MESSAGE);
+        return;
     }
+
+    new Timer().schedule(new TimerTask() {
+      @Override
+      public void run() {
+        SwingUtilities.invokeLater(() -> {
+          showMicrophoneSelectionPrompt();
+          showSpeakerSelectionPrompt();
+
+          menuManager.addPlayerMenuItem("Mute");
+          menuManager.addPlayerMenuItem("Unmute");
+
+          isRunning = true;
+          if (client.getGameState() == GameState.LOGGED_IN) {
+            if (voiceEngine != null && messageThread != null) {
+              shutdownAll();
+            }
+            if (config.useCustomServer()) runPluginThreads(config.customServerIP());
+            else runPluginThreads(mainServerIP);
+          }
+
+
+        });
+
+
+      }
+    },1000);
+
+
+  }
+
+  private void showMicrophoneSelectionPrompt() {
+
+    ArrayList<String> microphones = Lists.newArrayList();
+
+    for (Mixer.Info info : AudioSystem.getMixerInfo()) {
+      if(info.getDescription().toLowerCase().contains("capture"))
+        microphones.add(info.getName());
+    }
+
+
+              String[] options = new String[microphones.size()];
+              for (int i = 0; i < microphones.size(); i++) {
+                options[i] = microphones.get(i);
+              }
+              String input =
+                      (String)
+                              JOptionPane.showInputDialog(
+                                      null,
+                                      "Select your microphone",
+                                      "VoiceScape - Microphone Selection",
+                                      JOptionPane.QUESTION_MESSAGE,
+                                      null,
+                                      options,
+                                      options[0]);
+              if (input != null) {
+                for (String microphone : microphones) {
+                  if (microphone.equals(input)) {
+                    microphoneName = microphone;
+                    break;
+                  }
+                }
+              } else {
+                JOptionPane.showMessageDialog(null, "No microphone selected. Please select a microphone.", "VoiceScape - No microphone selected!", JOptionPane.ERROR_MESSAGE);
+                showMicrophoneSelectionPrompt();
+              }
+
+  }
+
+  private void showSpeakerSelectionPrompt() {
+
+
+      ArrayList<String> speakers = Lists.newArrayList();
+
+      for (Mixer.Info info : AudioSystem.getMixerInfo()) {
+        if(info.getDescription().toLowerCase().contains("playback"))
+          speakers.add(info.getName());
+      }
+
+
+                String[] options = new String[speakers.size()];
+                for (int i = 0; i < speakers.size(); i++) {
+                  options[i] = speakers.get(i);
+                }
+                String input =
+                        (String)
+                                JOptionPane.showInputDialog(
+                                        null,
+                                        "Select your speaker",
+                                        "VoiceScape - Speaker Selection",
+                                        JOptionPane.QUESTION_MESSAGE,
+                                        null,
+                                        options,
+                                        options[0]);
+                if (input != null) {
+                  for (String speaker : speakers) {
+                    if (speaker.equals(input)) {
+                      speakerName = speaker;
+                      break;
+                    }
+                  }
+                } else {
+                    JOptionPane.showMessageDialog(null, "No speaker selected. Please select a speaker.", "VoiceScape - No speaker selected!", JOptionPane.ERROR_MESSAGE);
+                    showSpeakerSelectionPrompt();
+                }
+
+
   }
 
 
@@ -113,25 +217,6 @@ public class VoiceScapePlugin extends Plugin {
     }
   }
 
-  // Useless code for now but will be used later on for muting and unmuting players.
-
-  /*  @Subscribe
-  public void onCommandExecuted(net.runelite.api.events. commandExecuted) {
-    System.out.println(commandExecuted.getCommand());
-    if (commandExecuted.getCommand().contains(" ") && (commandExecuted.getCommand().split(" ")[0].equals("mute") || commandExecuted.getCommand().split(" ")[0].equals("unmute"))
-        ) {
-      String command = commandExecuted.getCommand().split(" ")[0];
-      String playerName = commandExecuted.getCommand().split(" ")[1];
-      if (messageThread != null && messageThread.out != null) {
-        messageThread.out.println(command + " " + playerName);
-        client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", command.equals("mute") ? "Muted " + playerName : "Unmuted " + playerName, "");
-      } else {
-        client.addChatMessage(
-            ChatMessageType.GAMEMESSAGE, "", "You are not connected to a server!", "");
-      }
-    }
-
-  }*/
 
   @Subscribe
   public void onConfigChanged(final ConfigChanged configChanged) {
@@ -159,6 +244,33 @@ public class VoiceScapePlugin extends Plugin {
         nearSpawnedPlayers.add(client.getLocalPlayer());
       } else {
         nearSpawnedPlayers.remove(client.getLocalPlayer());
+      }
+    } else if (configChanged.getKey().equals("performancemode")) {
+      if(config.performanceMode()) {
+
+       JOptionPane.showMessageDialog(
+                null,
+                "Performance mode will reduce the quality of the voice chat to reduce CPU and network usage.\nThis is recommended for low end computers and/or slow internet connections.",
+                "VoiceScape - Performance Mode",
+                JOptionPane.WARNING_MESSAGE);
+
+       if(voiceEngine != null && voiceEngine.voiceReceiverThread != null && messageThread != null) {
+         shutdownAll();
+         JOptionPane.showMessageDialog(
+                null,
+                "You will need to re-enable the plugin for the changes to take effect.",
+                "VoiceScape - Performance Mode",
+                JOptionPane.INFORMATION_MESSAGE);
+       }
+      } else {
+        if(voiceEngine != null && voiceEngine.voiceReceiverThread != null && messageThread != null) {
+          shutdownAll();
+          JOptionPane.showMessageDialog(
+                  null,
+                  "You will need to re-enable the plugin for the changes to take effect.",
+                  "VoiceScape - Performance Mode",
+                  JOptionPane.INFORMATION_MESSAGE);
+        }
       }
     }
   }

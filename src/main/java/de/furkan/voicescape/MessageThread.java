@@ -51,13 +51,11 @@ public class MessageThread implements Runnable {
               public void run() {
                 if (client.getGameState() == GameState.LOGGED_IN && !thread.isInterrupted()) {
 
-                  if (VoiceScapePlugin.nearSpawnedPlayers.size() == 0
-                      || VoiceScapePlugin.nearSpawnedPlayers.equals(lastUpdate)) return;
+                  if (VoiceScapePlugin.nearSpawnedPlayers.size() == 0 || VoiceScapePlugin.nearSpawnedPlayers.equals(lastUpdate)) return;
 
                   ArrayList<String> playerNames = Lists.newArrayList();
                   VoiceScapePlugin.nearSpawnedPlayers.forEach(
                       player -> {
-
                         if (player == null || player.getName() == null) return;
                         if (player.getName().equals(client.getLocalPlayer().getName())
                             && !config.loopback()) return;

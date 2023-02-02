@@ -21,12 +21,22 @@ public class VoiceReceiverThread implements Runnable {
   public void run() {
     try {
       soundIn = new DataInputStream(connection.getInputStream());
-      AudioFormat af = new AudioFormat(44100, 16, 2, true, true);
+      AudioFormat af = new AudioFormat(44100,16, 2, true, true);
       DataLine.Info info = new DataLine.Info(SourceDataLine.class, af);
+
+      Mixer.Info[] mixerInfo = AudioSystem.getMixerInfo();
+      for (Mixer.Info info1 : mixerInfo) {
+        Mixer mixer = AudioSystem.getMixer(info1);
+        if(mixer.getMixerInfo().getName().equals(VoiceScapePlugin.getInstance().speakerName)) {
+          info = (DataLine.Info) mixer.getLine(info);
+          break;
+        }
+      }
+
       inSpeaker = (SourceDataLine) AudioSystem.getLine(info);
       inSpeaker.open(af);
       int bytesRead = 0;
-      byte[] inSound = new byte[1096];
+      byte[] inSound = new byte[config.performanceMode() ? 512 : 1096];
       updateSettings();
       while (bytesRead != -1) {
         bytesRead = soundIn.read(inSound);

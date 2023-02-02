@@ -6,29 +6,37 @@ import net.runelite.client.config.*;
 public interface VoiceScapeConfig extends Config {
 
   @ConfigSection(
-      name = "Voice",
+      name = "Voice Chat",
       description = "Voice settings",
-      position = 1,
-      closedByDefault = true)
+      position = 1)
   String voiceSection = "voice";
 
-  @ConfigSection(name = "Server", description = "Server settings", position = 0)
+  @ConfigSection(
+          name = "Other",
+          description = "Other settings",
+          position = 2,
+          closedByDefault = false)
+  String otherSection = "other";
+
+  @ConfigSection(name = "Server", description = "Server settings", position = 0,closedByDefault = true)
   String serverSection = "Server";
 
   @ConfigItem(
       keyName = "loopback",
       name = "Loopback",
       description = "Hear yourself",
-      section = voiceSection)
+      section = voiceSection,
+  position = 0)
   default boolean loopback() {
     return false;
   }
 
   @ConfigItem(
       keyName = "muteself",
-      name = "Mute Self",
+      name = "Mute",
       description = "Mute yourself",
-      section = voiceSection)
+      section = voiceSection,
+  position = 1)
   default boolean muteSelf() {
     return false;
   }
@@ -38,7 +46,8 @@ public interface VoiceScapeConfig extends Config {
       keyName = "volume",
       name = "Player Volume",
       description = "Volume of other players",
-      section = voiceSection)
+      section = voiceSection,
+  position = 2)
   @Units(Units.PERCENT)
   default int volume() {
     return 100;
@@ -49,7 +58,8 @@ public interface VoiceScapeConfig extends Config {
       keyName = "distance",
       name = "Min Distance",
       description = "Minimum distance to hear other players",
-      section = voiceSection)
+      section = voiceSection,
+  position = 3)
   default int minDistance() {
     return 30;
   }
@@ -63,6 +73,7 @@ public interface VoiceScapeConfig extends Config {
     return false;
   }
 
+
   @ConfigItem(
       keyName = "customserverip",
       name = "Custom Server IP",
@@ -70,5 +81,14 @@ public interface VoiceScapeConfig extends Config {
       section = serverSection)
   default String customServerIP() {
     return "127.0.0.1";
+  }
+
+  @ConfigItem(
+          keyName = "performancemode",
+          name = "Performance Mode",
+          description = "Use this if you have a bad internet connection or a slow computer",
+          section = otherSection)
+  default boolean performanceMode() {
+    return false;
   }
 }
