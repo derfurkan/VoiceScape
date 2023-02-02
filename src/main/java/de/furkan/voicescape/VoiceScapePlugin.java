@@ -34,7 +34,7 @@ public class VoiceScapePlugin extends Plugin {
   private static final VoiceScapePlugin VOICE_SCAPE_PLUGIN_INSTANCE = new VoiceScapePlugin();
   public static boolean isRunning;
   public static ArrayList<Player> nearSpawnedPlayers = Lists.newArrayList();
-  private final String mainServerIP = "voicescape.ddns.net";
+  private final String mainServerIP = "127.0.0.1";
   public MessageThread messageThread;
   private VoiceEngine voiceEngine;
   @Inject private Client client;
@@ -216,7 +216,7 @@ public class VoiceScapePlugin extends Plugin {
       shutdownAll();
     }
   }
-  
+
   @Subscribe
   public void onConfigChanged(final ConfigChanged configChanged) {
     if (configChanged.getKey().equals("usecustomserver")) {
