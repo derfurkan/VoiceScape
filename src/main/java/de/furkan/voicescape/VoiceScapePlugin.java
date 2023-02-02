@@ -216,8 +216,7 @@ public class VoiceScapePlugin extends Plugin {
       shutdownAll();
     }
   }
-
-
+  
   @Subscribe
   public void onConfigChanged(final ConfigChanged configChanged) {
     if (configChanged.getKey().equals("usecustomserver")) {
