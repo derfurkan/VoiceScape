@@ -6,4 +6,4 @@ The Plugin connects your Client to a Voice and Message Server on two separate th
 If the Client connected successfully, it will send its local username of the Player that is currently logged in to the Server for identification. From now on, every second, the Client will send a JSON String over the Message Thread to the server that contains all players surrounding the local player if the surrounding has changed. The Server will then decide if the Player should receive voice packets from the players if they are also registered at the server. The Client can cut the connection at every time and the server won't store ANY data.
 
 
-![alt text](https://i.ibb.co/W6Dws50/Screenshot-1.png)
+![alt text](https://i.ibb.co/wsG7HPd/Screenshot-1.png)
