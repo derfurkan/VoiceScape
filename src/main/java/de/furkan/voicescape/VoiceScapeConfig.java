@@ -9,9 +9,16 @@ public interface VoiceScapeConfig extends Config {
   String voiceSection = "voice";
 
   @ConfigSection(
+      name = "Indicator",
+      description = "Connection indicator settings",
+      position = 2,
+      closedByDefault = true)
+  String indicatorSection = "indicator";
+
+  @ConfigSection(
       name = "Other",
       description = "Other settings",
-      position = 2,
+      position = 3,
       closedByDefault = false)
   String otherSection = "other";
 
@@ -87,8 +94,40 @@ public interface VoiceScapeConfig extends Config {
       keyName = "performancemode",
       name = "Performance Mode",
       description = "Use this if you have a bad internet connection or a slow computer",
-      section = otherSection)
+      section = otherSection,
+      position = 3)
   default boolean performanceMode() {
     return false;
+  }
+
+  @ConfigItem(
+      keyName = "showwhoisconnected",
+      name = "Connection indicator",
+      description = "Show who is connected to the voice chat",
+      section = indicatorSection,
+      position = 0)
+  default boolean connectionIndicator() {
+    return true;
+  }
+
+  @ConfigItem(
+      keyName = "showownindicator",
+      name = "Show own indicator",
+      description = "Show your own indicator",
+      section = indicatorSection,
+      position = 1)
+  default boolean showOwnIndicator() {
+    return false;
+  }
+
+  @Range(min = 2, max = 30)
+  @ConfigItem(
+      keyName = "indicatordistance",
+      name = "Indicator Distance",
+      description = "Minimum distance to show the indicator",
+      section = indicatorSection,
+      position = 2)
+  default int indicatorDistance() {
+    return 5;
   }
 }

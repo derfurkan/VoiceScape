@@ -10,8 +10,6 @@ import net.runelite.api.GameState;
 import net.runelite.api.Player;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.MenuOptionClicked;
-import net.runelite.api.events.PlayerDespawned;
-import net.runelite.api.events.PlayerSpawned;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -33,7 +31,9 @@ public class VoiceScapePlugin extends Plugin {
 
   private static final VoiceScapePlugin VOICE_SCAPE_PLUGIN_INSTANCE = new VoiceScapePlugin();
   public static boolean isRunning;
-  public static ArrayList<Player> nearSpawnedPlayers = Lists.newArrayList();
+  public static ArrayList<String> registeredPlayers = Lists.newArrayList();
+
+  public static ArrayList<Player> indicatedPlayers = Lists.newArrayList();
   private final String mainServerIP = "127.0.0.1";
   public MessageThread messageThread;
   public String microphoneName;
@@ -186,16 +186,6 @@ public class VoiceScapePlugin extends Plugin {
   }
 
   @Subscribe
-  public void onPlayerSpawned(final PlayerSpawned playerSpawned) {
-    nearSpawnedPlayers.add(playerSpawned.getPlayer());
-  }
-
-  @Subscribe
-  public void onPlayerDespawned(final PlayerDespawned playerDespawned) {
-    nearSpawnedPlayers.remove(playerDespawned.getPlayer());
-  }
-
-  @Subscribe
   public void onGameStateChanged(final GameStateChanged gameStateChanged) {
     new Timer()
         .schedule(
@@ -225,12 +215,18 @@ public class VoiceScapePlugin extends Plugin {
     if (voiceEngine != null || messageThread != null) {
       shutdownAll();
     }
+    indicatedPlayers.forEach(
+        player -> {
+          player.setOverheadText("");
+        });
   }
 
   @Subscribe
   public void onConfigChanged(final ConfigChanged configChanged) {
     if (configChanged.getKey().equals("usecustomserver")) {
-      shutdownAll();
+      if (voiceEngine != null || messageThread != null) {
+        shutdownAll();
+      }
       if (!config.useCustomServer()) {
         int option =
             JOptionPane.showConfirmDialog(
@@ -242,17 +238,18 @@ public class VoiceScapePlugin extends Plugin {
           runPluginThreads(mainServerIP);
         }
       } else if (config.useCustomServer()) {
+        JOptionPane.showMessageDialog(
+            null,
+            "Using a custom server can cause a security risk.\nOnly use a custom server if you trust the server owner.\n\n"
+                + "Your microphone data is sent to the server and can be recorded by the server owner.\n"
+                + "Your IP address is sent to the server and can be used to identify you",
+            "VoiceScape - Custom Server Warning",
+            JOptionPane.WARNING_MESSAGE);
         runPluginThreads(config.customServerIP());
       }
     } else if (configChanged.getKey().equals("volume")) {
       if (voiceEngine != null) {
         voiceEngine.voiceReceiverThread.updateSettings();
-      }
-    } else if (configChanged.getKey().equals("loopback")) {
-      if (config.loopback() && !nearSpawnedPlayers.contains(client.getLocalPlayer())) {
-        nearSpawnedPlayers.add(client.getLocalPlayer());
-      } else {
-        nearSpawnedPlayers.remove(client.getLocalPlayer());
       }
     } else if (configChanged.getKey().equals("performancemode")) {
       if (config.performanceMode()) {
@@ -285,6 +282,15 @@ public class VoiceScapePlugin extends Plugin {
               JOptionPane.INFORMATION_MESSAGE);
         }
       }
+    } else if (configChanged.getKey().equals("showownindicator")) {
+      indicatedPlayers.forEach(
+          player -> {
+            if (player != null
+                && player.getName() != null
+                && player.getName().equals(client.getLocalPlayer().getName())) {
+              player.setOverheadText("");
+            }
+          });
     }
   }
 
