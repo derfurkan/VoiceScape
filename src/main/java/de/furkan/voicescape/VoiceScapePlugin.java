@@ -97,7 +97,7 @@ public class VoiceScapePlugin extends Plugin {
 
     String[] options = new String[microphones.size()];
     for (int i = 0; i < microphones.size(); i++) {
-      options[i] = microphones.get(i);
+      options[i] = "<html><ul><font color=white>"+microphones.get(i)+"</font></ul></html>";
     }
     String input =
         (String)
@@ -109,6 +109,8 @@ public class VoiceScapePlugin extends Plugin {
                 null,
                 options,
                 options[0]);
+
+
     if (input != null) {
       for (String microphone : microphones) {
         if (microphone.equals(input)) {
@@ -136,7 +138,7 @@ public class VoiceScapePlugin extends Plugin {
 
     String[] options = new String[speakers.size()];
     for (int i = 0; i < speakers.size(); i++) {
-      options[i] = speakers.get(i);
+      options[i] = "<html><ul><font color=white>"+speakers.get(i)+"</font></ul></html>";
     }
     String input =
         (String)
@@ -192,15 +194,14 @@ public class VoiceScapePlugin extends Plugin {
             new TimerTask() {
               @Override
               public void run() {
-                if (gameStateChanged.getGameState() == GameState.LOGGED_IN
+                if ((gameStateChanged.getGameState() == GameState.LOGGED_IN || gameStateChanged.getGameState() == GameState.LOADING)
                     && (voiceEngine == null || messageThread == null)) {
                   if (!config.useCustomServer()) {
                     runPluginThreads(mainServerIP);
                   } else {
                     runPluginThreads(config.customServerIP());
                   }
-                }
-                if (gameStateChanged.getGameState() != GameState.LOGGED_IN
+                } else if ((gameStateChanged.getGameState() != GameState.LOGGED_IN && gameStateChanged.getGameState() != GameState.LOADING)
                     && (voiceEngine != null || messageThread != null)) {
                   shutdownAll();
                 }
@@ -215,10 +216,7 @@ public class VoiceScapePlugin extends Plugin {
     if (voiceEngine != null || messageThread != null) {
       shutdownAll();
     }
-    indicatedPlayers.forEach(
-        player -> {
-          player.setOverheadText("");
-        });
+
   }
 
   @Subscribe
@@ -231,21 +229,26 @@ public class VoiceScapePlugin extends Plugin {
         int option =
             JOptionPane.showConfirmDialog(
                 null,
-                "Do you want to use the main server?",
+                "Do you want to connect to "+mainServerIP+" instead?",
                 "VoiceScape",
                 JOptionPane.YES_NO_OPTION);
         if (option == JOptionPane.YES_OPTION) {
           runPluginThreads(mainServerIP);
         }
       } else if (config.useCustomServer()) {
-        JOptionPane.showMessageDialog(
-            null,
-            "Using a custom server can cause a security risk.\nOnly use a custom server if you trust the server owner.\n\n"
-                + "Your microphone data is sent to the server and can be recorded by the server owner.\n"
-                + "Your IP address is sent to the server and can be used to identify you",
-            "VoiceScape - Custom Server Warning",
-            JOptionPane.WARNING_MESSAGE);
-        runPluginThreads(config.customServerIP());
+        int option =
+            JOptionPane.showConfirmDialog(
+                null,
+                "Using a custom server can cause a security risk.\nOnly use a custom server if you trust the server owner.\n\n"
+                    + "Your microphone data is sent to the server and can be recorded by the server owner.\n"
+                    + "Your IP address is sent to the server and can be used to identify you\n\n"
+                    + "Do you still want to use a custom server?",
+                "VoiceScape - Custom Server Warning",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (option == JOptionPane.YES_OPTION) {
+          runPluginThreads(config.customServerIP());
+        }
       }
     } else if (configChanged.getKey().equals("volume")) {
       if (voiceEngine != null) {
@@ -309,7 +312,9 @@ public class VoiceScapePlugin extends Plugin {
         .start();
   }
 
-  private void shutdownAll() {
+  public void shutdownAll() {
+    indicatedPlayers.forEach(
+            player -> player.setOverheadText(""));
     if (messageThread != null) messageThread.thread.interrupt();
     if (messageThread != null && messageThread.out != null) messageThread.out.println("disconnect");
 

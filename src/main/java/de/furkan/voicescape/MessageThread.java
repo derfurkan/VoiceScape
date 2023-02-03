@@ -50,7 +50,7 @@ public class MessageThread implements Runnable {
               try {
                 BufferedReader in =
                     new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                String line;
+                String line = "None";
                 while ((line = in.readLine()) != null) {
                   if (line.startsWith("register:")) {
                     line = line.replace("register:", "");
@@ -58,26 +58,27 @@ public class MessageThread implements Runnable {
                   } else if (line.startsWith("unregister:")) {
                     line = line.replace("unregister:", "");
                     VoiceScapePlugin.registeredPlayers.remove(line);
+                  } else {
+                    String finalLine = line;
+                    SwingUtilities.invokeLater(
+                        () -> {
+                          JOptionPane.showConfirmDialog(
+                              null,
+                              "The Server has sent an invalid message. For security reasons you have been disconnected.\nInvalid server messages indicate that the server might be modified.\nPlease contact the server owner to fix this issue\n\nMessage\n"
+                                  + finalLine,
+                              "VoiceScape - Invalid Message",
+                              JOptionPane.DEFAULT_OPTION,
+                              JOptionPane.ERROR_MESSAGE);
+                        });
+                    try {
+                      VoiceScapePlugin.getInstance().shutdownAll();
+                    } catch (Exception ex) {
+                      throw new RuntimeException(ex);
+                    }
                   }
                 }
-              } catch (IOException e) {
-                SwingUtilities.invokeLater(
-                    () -> {
-                      JOptionPane.showConfirmDialog(
-                          null,
-                          "The Server has sent an invalid message.\nFor security reasons you have been disconnected.\nInvalid server messages indicate that the server might be modified.\nPlease contact the server owner to fix this issue\n\nMessage\n"
-                              + e.getMessage(),
-                          "VoiceScape - Invalid Message",
-                          JOptionPane.DEFAULT_OPTION,
-                          JOptionPane.ERROR_MESSAGE);
-                    });
-                try {
-                  VoiceScapePlugin.getInstance().shutDown();
-                } catch (Exception ex) {
-                  throw new RuntimeException(ex);
-                }
-              } catch (Exception ignore) {
-
+              } catch (Exception e) {
+                e.printStackTrace();
               }
             });
 
