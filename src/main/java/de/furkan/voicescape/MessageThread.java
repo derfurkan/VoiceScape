@@ -61,19 +61,23 @@ public class MessageThread implements Runnable {
                   }
                 }
               } catch (IOException e) {
+                SwingUtilities.invokeLater(
+                    () -> {
+                      JOptionPane.showConfirmDialog(
+                          null,
+                          "The Server has sent an invalid message.\nFor security reasons you have been disconnected.\nInvalid server messages indicate that the server might be modified.\nPlease contact the server owner to fix this issue\n\nMessage\n"
+                              + e.getMessage(),
+                          "VoiceScape - Invalid Message",
+                          JOptionPane.DEFAULT_OPTION,
+                          JOptionPane.ERROR_MESSAGE);
+                    });
                 try {
-                  JOptionPane.showConfirmDialog(
-                      null,
-                      "The Server has sent an invalid message.\nFor security reasons you have been disconnected.\nInvalid server messages indicate that the server might be modified.\nPlease contact the server owner to fix this issue\n\nMessage\n"
-                          + e.getMessage(),
-                      "VoiceScape - Invalid Message",
-                      JOptionPane.DEFAULT_OPTION,
-                      JOptionPane.ERROR_MESSAGE);
                   VoiceScapePlugin.getInstance().shutDown();
                 } catch (Exception ex) {
                   throw new RuntimeException(ex);
                 }
-                e.printStackTrace();
+              } catch (Exception ignore) {
+
               }
             });
 
