@@ -20,9 +20,8 @@ public class MessageThread implements Runnable {
   private final VoiceScapeConfig config;
   private final Gson gson;
   public PrintWriter out;
-
-  private Socket connection;
   public ArrayList<Player> lastUpdate = Lists.newArrayList();
+  private Socket connection;
 
   public MessageThread(
       String ip, int port, Client client, VoiceScapeConfig config, Gson gsonInstance) {
@@ -51,7 +50,7 @@ public class MessageThread implements Runnable {
               public void run() {
                 if (client.getGameState() == GameState.LOGGED_IN && !thread.isInterrupted()) {
 
-                  if (VoiceScapePlugin.nearSpawnedPlayers.size() == 0 || VoiceScapePlugin.nearSpawnedPlayers.equals(lastUpdate)) return;
+                  if (VoiceScapePlugin.nearSpawnedPlayers.size() == 0) return;
 
                   ArrayList<String> playerNames = Lists.newArrayList();
                   VoiceScapePlugin.nearSpawnedPlayers.forEach(

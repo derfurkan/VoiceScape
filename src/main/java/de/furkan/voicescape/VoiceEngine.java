@@ -9,22 +9,16 @@ import java.util.concurrent.CompletableFuture;
 
 public class VoiceEngine implements Runnable {
 
+  public final CompletableFuture<Boolean> completableFuture;
   private final VoiceScapeConfig voiceScapeConfig;
   public VoiceReceiverThread voiceReceiverThread;
   public Thread thread;
-  private Socket connection;
-
-  public final CompletableFuture<Boolean> completableFuture;
-
   public MessageThread messageThread;
-
+  private Socket connection;
   private TargetDataLine microphone;
   private boolean isRunning = true;
 
-  public VoiceEngine(
-      String serverIP,
-      int serverPort,
-      VoiceScapeConfig voiceScapeConfig) {
+  public VoiceEngine(String serverIP, int serverPort, VoiceScapeConfig voiceScapeConfig) {
     completableFuture = new CompletableFuture<>();
     this.voiceScapeConfig = voiceScapeConfig;
 
@@ -35,15 +29,14 @@ public class VoiceEngine implements Runnable {
       AudioFormat audioFormat = new AudioFormat(44100, 16, 2, true, true);
       DataLine.Info info = new DataLine.Info(TargetDataLine.class, audioFormat);
 
-        Mixer.Info[] mixerInfo = AudioSystem.getMixerInfo();
-        for (Mixer.Info info1 : mixerInfo) {
-            Mixer mixer = AudioSystem.getMixer(info1);
-            if(mixer.getMixerInfo().getName().equals(VoiceScapePlugin.getInstance().microphoneName)) {
-            info = (DataLine.Info) mixer.getLine(info);
-            break;
-            }
+      Mixer.Info[] mixerInfo = AudioSystem.getMixerInfo();
+      for (Mixer.Info info1 : mixerInfo) {
+        Mixer mixer = AudioSystem.getMixer(info1);
+        if (mixer.getMixerInfo().getName().equals(VoiceScapePlugin.getInstance().microphoneName)) {
+          info = (DataLine.Info) mixer.getLine(info);
+          break;
         }
-
+      }
 
       microphone = (TargetDataLine) AudioSystem.getLine(info);
       microphone.open(audioFormat);
@@ -51,18 +44,18 @@ public class VoiceEngine implements Runnable {
       voiceReceiverThread = new VoiceReceiverThread(connection, voiceScapeConfig);
       this.thread.start();
       completableFuture.complete(true);
-    }  catch (LineUnavailableException e) {
+    } catch (LineUnavailableException e) {
       completableFuture.complete(false);
       SwingUtilities.invokeLater(
-              new Runnable() {
-                public void run() {
-                  JOptionPane.showMessageDialog(
-                          null,
-                          "Could not open microphone. Please check your microphone.",
-                          "VoiceScape - Error",
-                          JOptionPane.ERROR_MESSAGE);
-                }
-              });
+          new Runnable() {
+            public void run() {
+              JOptionPane.showMessageDialog(
+                  null,
+                  "Could not open microphone. Please check your microphone.",
+                  "VoiceScape - Error",
+                  JOptionPane.ERROR_MESSAGE);
+            }
+          });
 
       e.printStackTrace();
       microphone.close();
@@ -72,15 +65,15 @@ public class VoiceEngine implements Runnable {
       completableFuture.complete(false);
       e.printStackTrace();
       SwingUtilities.invokeLater(
-              new Runnable() {
-                public void run() {
-                  JOptionPane.showMessageDialog(
-                          null,
-                          "Could not connect to the server. Please try again later.",
-                          "VoiceScape - Error",
-                          JOptionPane.ERROR_MESSAGE);
-                }
-              });
+          new Runnable() {
+            public void run() {
+              JOptionPane.showMessageDialog(
+                  null,
+                  "Could not connect to the server. Please try again later.",
+                  "VoiceScape - Error",
+                  JOptionPane.ERROR_MESSAGE);
+            }
+          });
       thread.interrupt();
     }
   }
