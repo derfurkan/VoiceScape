@@ -170,16 +170,17 @@ public class MessageThread implements Runnable {
 
                   if (!playerNames.equals(lastUpdate)) {
 
-                   if (playerNames.size() > 5 && config.performanceMode()) {
-                     playerNames = Lists.newArrayList(playerNames.subList(0, 5));
-                   }
-                  if (playerNames.size() != 0 && !playerNames.equals(lastUpdate)) {
-                    out.println(gson.toJson(playerNames));
-                    lastUpdate = playerNames;
+                    if (playerNames.size() > 5 && config.performanceMode()) {
+                      playerNames = Lists.newArrayList(playerNames.subList(0, 5));
+                    }
+                    if (playerNames.size() != 0 && !playerNames.equals(lastUpdate)) {
+                      out.println(gson.toJson(playerNames));
+                      lastUpdate = playerNames;
+                    }
+                  } else {
+                    cancel();
+                    thread1.interrupt();
                   }
-                } else {
-                  cancel();
-                  thread1.interrupt();
                 }
               }
             },
