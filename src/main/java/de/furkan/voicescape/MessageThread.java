@@ -104,68 +104,71 @@ public class MessageThread implements Runnable {
             new TimerTask() {
               @Override
               public void run() {
-                if (client.getGameState() == GameState.LOGGED_IN && !thread.isInterrupted()) {
-
-                  if (client.getPlayers().size() == 0) return;
+                if ((client.getGameState() == GameState.LOGGED_IN
+                        || client.getGameState() == GameState.HOPPING
+                        || client.getGameState() == GameState.LOADING)
+                    && !thread.isInterrupted()) {
 
                   ArrayList<String> playerNames = Lists.newArrayList();
                   ArrayList<String> finalPlayerNames = playerNames;
-                  client
-                      .getPlayers()
-                      .forEach(
-                          player -> {
-                            if (player == null
-                                || player.getName() == null
-                                || client.getPlayers().size() == 0) return;
+                  if (client.getPlayers().size() > 0) {
+                    client
+                        .getPlayers()
+                        .forEach(
+                            player -> {
+                              if (player == null || player.getName() == null) return;
 
-                            if (config.connectionIndicator()
-                                && client
-                                        .getLocalPlayer()
-                                        .getWorldLocation()
-                                        .distanceTo(player.getWorldLocation())
-                                    <= config.indicatorDistance()
-                                && (player.getOverheadText() == null
-                                    || player.getOverheadText().isEmpty())
-                                && VoiceScapePlugin.registeredPlayers.contains(player.getName())) {
+                              if (config.connectionIndicator()
+                                  && client
+                                          .getLocalPlayer()
+                                          .getWorldLocation()
+                                          .distanceTo(player.getWorldLocation())
+                                      <= config.indicatorDistance()
+                                  && (player.getOverheadText() == null
+                                      || player.getOverheadText().isEmpty())
+                                  && VoiceScapePlugin.registeredPlayers.contains(
+                                      player.getName())) {
 
-                              if (player.getName().equals(client.getLocalPlayer().getName())
-                                  && !config.showOwnIndicator()) {
+                                if (player.getName().equals(client.getLocalPlayer().getName())
+                                    && !config.showOwnIndicator()) {
+                                  player.setOverheadText("");
+                                  VoiceScapePlugin.indicatedPlayers.remove(player);
+                                } else {
+                                  if (!VoiceScapePlugin.indicatedPlayers.contains(player)) {
+                                    VoiceScapePlugin.indicatedPlayers.add(player);
+                                  }
+                                  player.setOverheadText("Connected [" + player.getName() + "]");
+                                }
+                              } else if (player.getOverheadText() != null
+                                  && player.getOverheadText().startsWith("Connected")
+                                  && (!config.connectionIndicator()
+                                      || client
+                                              .getLocalPlayer()
+                                              .getWorldLocation()
+                                              .distanceTo(player.getWorldLocation())
+                                          > config.indicatorDistance())) {
                                 player.setOverheadText("");
                                 VoiceScapePlugin.indicatedPlayers.remove(player);
-                              } else {
-                                if (!VoiceScapePlugin.indicatedPlayers.contains(player)) {
-                                  VoiceScapePlugin.indicatedPlayers.add(player);
-                                }
-                                player.setOverheadText("Connected [" + player.getName() + "]");
                               }
-                            } else if (player.getOverheadText() != null
-                                && player.getOverheadText().startsWith("Connected")
-                                && (!config.connectionIndicator()
-                                    || client
-                                            .getLocalPlayer()
-                                            .getWorldLocation()
-                                            .distanceTo(player.getWorldLocation())
-                                        > config.indicatorDistance())) {
-                              player.setOverheadText("");
-                              VoiceScapePlugin.indicatedPlayers.remove(player);
-                            }
 
-                            if (player.getName().equals(client.getLocalPlayer().getName())
-                                && !config.loopback()) return;
+                              if (player.getName().equals(client.getLocalPlayer().getName())
+                                  && !config.loopback()) return;
 
-                            if (client
-                                    .getLocalPlayer()
-                                    .getWorldLocation()
-                                    .distanceTo(player.getWorldLocation())
-                                <= config.minDistance()) {
-                              finalPlayerNames.add(player.getName());
-                            }
-                          });
+                              if (client
+                                      .getLocalPlayer()
+                                      .getWorldLocation()
+                                      .distanceTo(player.getWorldLocation())
+                                  <= config.minDistance()) {
+                                finalPlayerNames.add(player.getName());
+                              }
+                            });
+                  }
 
-                  if (playerNames.size() != 0 && !playerNames.equals(lastUpdate)) {
-                    if (playerNames.size() > 5 && config.performanceMode()) {
-                      playerNames = Lists.newArrayList(playerNames.subList(0, 5));
-                    }
+                  if (playerNames.size() > 5 && config.performanceMode()) {
+                    playerNames = Lists.newArrayList(playerNames.subList(0, 5));
+                  }
+
+                  if (!playerNames.equals(lastUpdate)) {
                     out.println(gson.toJson(playerNames));
                     lastUpdate = playerNames;
                   }

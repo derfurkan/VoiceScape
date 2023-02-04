@@ -84,7 +84,7 @@ public class VoiceScapePlugin extends Plugin {
                     });
               }
             },
-            1000);
+            2000);
   }
 
   private void showMicrophoneSelectionPrompt() {
@@ -194,7 +194,7 @@ public class VoiceScapePlugin extends Plugin {
               @Override
               public void run() {
                 if ((gameStateChanged.getGameState() == GameState.LOGGED_IN
-                        || gameStateChanged.getGameState() == GameState.LOADING)
+                        || gameStateChanged.getGameState() == GameState.LOADING|| gameStateChanged.getGameState() == GameState.HOPPING)
                     && (voiceEngine == null || messageThread == null)) {
                   if (!config.useCustomServer()) {
                     runPluginThreads(mainServerIP);
@@ -202,7 +202,7 @@ public class VoiceScapePlugin extends Plugin {
                     runPluginThreads(config.customServerIP());
                   }
                 } else if ((gameStateChanged.getGameState() != GameState.LOGGED_IN
-                        && gameStateChanged.getGameState() != GameState.LOADING)
+                        && gameStateChanged.getGameState() != GameState.LOADING && gameStateChanged.getGameState() != GameState.HOPPING)
                     && (voiceEngine != null || messageThread != null)) {
                   shutdownAll();
                 }
