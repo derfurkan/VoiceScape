@@ -78,7 +78,22 @@ public class MessageThread implements Runnable {
                   }
                 }
               } catch (Exception e) {
+                if (VoiceScapePlugin.isRunning) {
+                  SwingUtilities.invokeLater(
+                      new Runnable() {
+                        public void run() {
+                          JOptionPane.showMessageDialog(
+                              null,
+                              "Connection to the voice server has been lost.\nHere are a few reasons why this could happen:\n- The server is not online\n- The server has rejected your request\n- You are using a proxy or VPN\n- You firewall/antivirus blocks the connection to the server\n\n"
+                                  + "Please wait one minute and try again.",
+                              "VoiceScape - Error",
+                              JOptionPane.ERROR_MESSAGE);
+                        }
+                      });
+                }
+                VoiceScapePlugin.indicatedPlayers.forEach(player -> player.setOverheadText(""));
                 e.printStackTrace();
+                stop();
               }
             });
 
@@ -94,6 +109,7 @@ public class MessageThread implements Runnable {
                   if (client.getPlayers().size() == 0) return;
 
                   ArrayList<String> playerNames = Lists.newArrayList();
+                  ArrayList<String> finalPlayerNames = playerNames;
                   client
                       .getPlayers()
                       .forEach(
@@ -142,11 +158,14 @@ public class MessageThread implements Runnable {
                                     .getWorldLocation()
                                     .distanceTo(player.getWorldLocation())
                                 <= config.minDistance()) {
-                              playerNames.add(player.getName());
+                              finalPlayerNames.add(player.getName());
                             }
                           });
 
                   if (playerNames.size() != 0 && !playerNames.equals(lastUpdate)) {
+                    if (playerNames.size() > 5 && config.performanceMode()) {
+                      playerNames = Lists.newArrayList(playerNames.subList(0, 5));
+                    }
                     out.println(gson.toJson(playerNames));
                     lastUpdate = playerNames;
                   }

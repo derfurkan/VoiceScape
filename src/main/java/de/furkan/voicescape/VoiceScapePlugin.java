@@ -97,7 +97,7 @@ public class VoiceScapePlugin extends Plugin {
 
     String[] options = new String[microphones.size()];
     for (int i = 0; i < microphones.size(); i++) {
-      options[i] = "<html><ul><font color=white>"+microphones.get(i)+"</font></ul></html>";
+      options[i] = "<html><ul><font color=white>" + microphones.get(i) + "</font></ul></html>";
     }
     String input =
         (String)
@@ -109,7 +109,6 @@ public class VoiceScapePlugin extends Plugin {
                 null,
                 options,
                 options[0]);
-
 
     if (input != null) {
       for (String microphone : microphones) {
@@ -138,7 +137,7 @@ public class VoiceScapePlugin extends Plugin {
 
     String[] options = new String[speakers.size()];
     for (int i = 0; i < speakers.size(); i++) {
-      options[i] = "<html><ul><font color=white>"+speakers.get(i)+"</font></ul></html>";
+      options[i] = "<html><ul><font color=white>" + speakers.get(i) + "</font></ul></html>";
     }
     String input =
         (String)
@@ -194,14 +193,16 @@ public class VoiceScapePlugin extends Plugin {
             new TimerTask() {
               @Override
               public void run() {
-                if ((gameStateChanged.getGameState() == GameState.LOGGED_IN || gameStateChanged.getGameState() == GameState.LOADING)
+                if ((gameStateChanged.getGameState() == GameState.LOGGED_IN
+                        || gameStateChanged.getGameState() == GameState.LOADING)
                     && (voiceEngine == null || messageThread == null)) {
                   if (!config.useCustomServer()) {
                     runPluginThreads(mainServerIP);
                   } else {
                     runPluginThreads(config.customServerIP());
                   }
-                } else if ((gameStateChanged.getGameState() != GameState.LOGGED_IN && gameStateChanged.getGameState() != GameState.LOADING)
+                } else if ((gameStateChanged.getGameState() != GameState.LOGGED_IN
+                        && gameStateChanged.getGameState() != GameState.LOADING)
                     && (voiceEngine != null || messageThread != null)) {
                   shutdownAll();
                 }
@@ -216,7 +217,6 @@ public class VoiceScapePlugin extends Plugin {
     if (voiceEngine != null || messageThread != null) {
       shutdownAll();
     }
-
   }
 
   @Subscribe
@@ -229,7 +229,7 @@ public class VoiceScapePlugin extends Plugin {
         int option =
             JOptionPane.showConfirmDialog(
                 null,
-                "Do you want to connect to "+mainServerIP+" instead?",
+                "Do you want to connect to " + mainServerIP + " instead?",
                 "VoiceScape",
                 JOptionPane.YES_NO_OPTION);
         if (option == JOptionPane.YES_OPTION) {
@@ -254,12 +254,24 @@ public class VoiceScapePlugin extends Plugin {
       if (voiceEngine != null) {
         voiceEngine.voiceReceiverThread.updateSettings();
       }
+    } else if (configChanged.getKey().equals("muteself")) {
+      if (config.muteSelf() && voiceEngine != null) {
+        new Timer()
+            .schedule(
+                new TimerTask() {
+                  @Override
+                  public void run() {
+                    voiceEngine.sendEmpty = true;
+                  }
+                },
+                1000);
+      }
     } else if (configChanged.getKey().equals("performancemode")) {
       if (config.performanceMode()) {
 
         JOptionPane.showMessageDialog(
             null,
-            "Performance mode will reduce the quality of the voice chat to reduce CPU and network usage.\nThis is recommended for low end computers and/or slow internet connections.",
+            "Performance mode will reduce the quality of the voice chat and the amount of clients you can talk with to reduce CPU and network usage.\nThis is recommended for low end computers and/or slow internet connections.",
             "VoiceScape - Performance Mode",
             JOptionPane.WARNING_MESSAGE);
 
@@ -313,8 +325,7 @@ public class VoiceScapePlugin extends Plugin {
   }
 
   public void shutdownAll() {
-    indicatedPlayers.forEach(
-            player -> player.setOverheadText(""));
+    indicatedPlayers.forEach(player -> player.setOverheadText(""));
     if (messageThread != null) messageThread.thread.interrupt();
     if (messageThread != null && messageThread.out != null) messageThread.out.println("disconnect");
 

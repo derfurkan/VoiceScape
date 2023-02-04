@@ -14,6 +14,8 @@ public class VoiceEngine implements Runnable {
   public VoiceReceiverThread voiceReceiverThread;
   public Thread thread;
   public MessageThread messageThread;
+  public boolean sendEmpty = false;
+  boolean noise = false;
   private Socket connection;
   private TargetDataLine microphone;
   private boolean isRunning = true;
@@ -87,31 +89,22 @@ public class VoiceEngine implements Runnable {
       while (bytesRead != -1 && isRunning) {
         bytesRead = microphone.read(soundData, 0, 1096);
         if (bytesRead >= 0 && !voiceScapeConfig.muteSelf()) {
+          sendEmpty = false;
           dos.write(soundData, 0, bytesRead);
         } else if (voiceScapeConfig.muteSelf()) {
-          dos.write(new byte[0], 0, 0);
+          if (!sendEmpty) {
+            dos.write(new byte[1096], 0, 1096);
+          }
         }
       }
     } catch (Exception e) {
-      if (VoiceScapePlugin.isRunning && isRunning) {
-        SwingUtilities.invokeLater(
-            new Runnable() {
-              public void run() {
-                JOptionPane.showMessageDialog(
-                    null,
-                    "Connection to the voice server has been lost.\nHere are a few reasons why this could happen:\n- The server is not online\n- The server has rejected your request\n- You are using a proxy or VPN\n- You firewall/antivirus blocks the connection to the server\n\n"
-                        + "Please wait one minute and try again.",
-                    "VoiceScape - Error",
-                    JOptionPane.ERROR_MESSAGE);
-              }
-            });
-      }
       e.printStackTrace();
       stopEngine();
     }
   }
 
   public void stopEngine() {
+
     isRunning = false;
     try {
       messageThread.stop();

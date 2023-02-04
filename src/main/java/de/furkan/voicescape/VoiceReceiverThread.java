@@ -39,12 +39,15 @@ public class VoiceReceiverThread implements Runnable {
       byte[] inSound = new byte[config.performanceMode() ? 512 : 1096];
       updateSettings();
       while (bytesRead != -1) {
+        inSpeaker.stop();
         bytesRead = soundIn.read(inSound);
         if (bytesRead >= 0) {
+          inSpeaker.start();
           inSpeaker.write(inSound, 0, bytesRead);
         }
       }
     } catch (Exception e) {
+      e.printStackTrace();
       stopReceiver();
     }
   }
