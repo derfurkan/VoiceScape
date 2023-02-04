@@ -162,10 +162,10 @@ public class MessageThread implements Runnable {
                             }
                           });
 
+                   if (playerNames.size() > 5 && config.performanceMode()) {
+                     playerNames = Lists.newArrayList(playerNames.subList(0, 5));
+                   }
                   if (playerNames.size() != 0 && !playerNames.equals(lastUpdate)) {
-                    if (playerNames.size() > 5 && config.performanceMode()) {
-                      playerNames = Lists.newArrayList(playerNames.subList(0, 5));
-                    }
                     out.println(gson.toJson(playerNames));
                     lastUpdate = playerNames;
                   }
