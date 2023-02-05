@@ -27,7 +27,6 @@ public class VoiceEngine implements Runnable {
     try {
       this.thread = new Thread(this, "VoiceEngine");
       this.connection = new Socket(serverIP, serverPort);
-
       AudioFormat audioFormat = new AudioFormat(44100, 16, 2, true, true);
       DataLine.Info info = new DataLine.Info(TargetDataLine.class, audioFormat);
 
@@ -85,15 +84,15 @@ public class VoiceEngine implements Runnable {
     try {
       OutputStream dos = connection.getOutputStream();
       int bytesRead = 0;
-      byte[] soundData = new byte[1096];
+      byte[] soundData = new byte[8192];
       while (bytesRead != -1 && isRunning) {
-        bytesRead = microphone.read(soundData, 0, 1096);
+        bytesRead = microphone.read(soundData, 0, 8192);
         if (bytesRead >= 0 && !voiceScapeConfig.muteSelf()) {
           sendEmpty = false;
           dos.write(soundData, 0, bytesRead);
         } else if (voiceScapeConfig.muteSelf()) {
           if (!sendEmpty) {
-            dos.write(new byte[1096], 0, 1096);
+            dos.write(new byte[8192], 0, 8192);
           }
         }
       }

@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.Player;
 
 import javax.swing.*;
 import java.io.BufferedReader;
@@ -52,12 +53,22 @@ public class MessageThread implements Runnable {
                     new BufferedReader(new InputStreamReader(connection.getInputStream()));
                 String line = "None";
                 while ((line = in.readLine()) != null) {
-                  if (line.startsWith("register:")) {
-                    line = line.replace("register:", "");
-                    VoiceScapePlugin.registeredPlayers.add(line);
-                  } else if (line.startsWith("unregister:")) {
-                    line = line.replace("unregister:", "");
-                    VoiceScapePlugin.registeredPlayers.remove(line);
+                  if (line.startsWith("register ")) {
+                    line = line.replace("register ", "");
+                    ArrayList<String> registeredPlayers = new ArrayList<>();
+                    registeredPlayers = gson.fromJson(line, registeredPlayers.getClass());
+
+                    registeredPlayers.forEach(
+                        s -> {
+                          if (!VoiceScapePlugin.registeredPlayers.contains(s))
+                            VoiceScapePlugin.registeredPlayers.add(s);
+                        });
+
+                  } else if (line.startsWith("unregister ")) {
+                    line = line.replace("unregister ", "");
+                    ArrayList<String> unregisteredPlayers = new ArrayList<>();
+                    unregisteredPlayers = gson.fromJson(line, unregisteredPlayers.getClass());
+                    unregisteredPlayers.forEach(s -> VoiceScapePlugin.registeredPlayers.remove(s));
                   } else {
                     String finalLine = line;
                     SwingUtilities.invokeLater(
@@ -111,7 +122,7 @@ public class MessageThread implements Runnable {
 
                   ArrayList<String> playerNames = Lists.newArrayList();
                   ArrayList<String> finalPlayerNames = playerNames;
-                  if (client.getPlayers().size() > 0) {
+                  if (client.getPlayers().size() > 0 && containsRegisteredPlayers()) {
                     client
                         .getPlayers()
                         .forEach(
@@ -155,10 +166,12 @@ public class MessageThread implements Runnable {
                                   && !config.loopback()) return;
 
                               if (client
-                                      .getLocalPlayer()
-                                      .getWorldLocation()
-                                      .distanceTo(player.getWorldLocation())
-                                  <= config.minDistance()) {
+                                          .getLocalPlayer()
+                                          .getWorldLocation()
+                                          .distanceTo(player.getWorldLocation())
+                                      <= config.minDistance()
+                                  && VoiceScapePlugin.registeredPlayers.contains(
+                                      player.getName())) {
                                 finalPlayerNames.add(player.getName());
                               }
                             });
@@ -167,25 +180,30 @@ public class MessageThread implements Runnable {
                   if (playerNames.size() > 5 && config.performanceMode()) {
                     playerNames = Lists.newArrayList(playerNames.subList(0, 5));
                   }
-
                   if (!playerNames.equals(lastUpdate)) {
-
-                    if (playerNames.size() > 5 && config.performanceMode()) {
-                      playerNames = Lists.newArrayList(playerNames.subList(0, 5));
-                    }
-                    if (playerNames.size() != 0 && !playerNames.equals(lastUpdate)) {
-                      out.println(gson.toJson(playerNames));
-                      lastUpdate = playerNames;
-                    }
-                  } else {
-                    cancel();
-                    thread1.interrupt();
+                    out.println(gson.toJson(playerNames));
+                    lastUpdate = playerNames;
                   }
+                } else {
+                  cancel();
+                  thread1.interrupt();
                 }
               }
             },
             1000,
             1000);
+  }
+
+  private boolean containsRegisteredPlayers() {
+    if (client.getPlayers().size() > 0) {
+      for (Player player : client.getPlayers()) {
+        if (player == null || player.getName() == null) continue;
+        if (VoiceScapePlugin.registeredPlayers.contains(player.getName())) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   public void stop() {
