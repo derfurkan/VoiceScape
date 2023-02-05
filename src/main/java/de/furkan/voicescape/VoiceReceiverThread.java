@@ -36,7 +36,7 @@ public class VoiceReceiverThread implements Runnable {
       inSpeaker = (SourceDataLine) AudioSystem.getLine(info);
       inSpeaker.open(af);
       int bytesRead = 0;
-      byte[] inSound = new byte[config.performanceMode() ? 512 : 8192];
+      byte[] inSound = new byte[config.performanceMode() ? 1096 : 8192];
       updateSettings();
       while (bytesRead != -1) {
         inSpeaker.stop();

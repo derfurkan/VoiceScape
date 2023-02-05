@@ -158,7 +158,7 @@ public class MessageThread implements Runnable {
                                               .getLocalPlayer()
                                               .getWorldLocation()
                                               .distanceTo(player.getWorldLocation())
-                                          > config.indicatorDistance())) {
+                                          > config.indicatorDistance() || !VoiceScapePlugin.registeredPlayers.contains(player.getName()))) {
                                 player.setOverheadText("");
                                 VoiceScapePlugin.indicatedPlayers.remove(player);
                               }
