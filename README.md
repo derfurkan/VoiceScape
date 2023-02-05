@@ -6,4 +6,6 @@ The plugin connects your client to a voice and message server on two separate th
 
 
 ## Here is the server that can be hosted by anyone: [VoiceScape-Server](https://github.com/derfurkan/VoiceScape-Server)
-![alt text](https://i.ibb.co/Tg3XqQb/Screenshot-1.png)
+![alt text](https://i.ibb.co/bsYHxZ4/Screenshot-1.png)
+![alt text](https://i.ibb.co/YPRGTgh/Screenshot-2.png)
+![alt text](https://i.ibb.co/DGDLD44/Screenshot-3.png)
