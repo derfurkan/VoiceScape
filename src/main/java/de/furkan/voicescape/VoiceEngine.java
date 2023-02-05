@@ -106,7 +106,10 @@ public class VoiceEngine implements Runnable {
 
     isRunning = false;
     try {
-      messageThread.stop();
+
+      if(messageThread != null)
+        messageThread.stop();
+
       connection.close();
       microphone.close();
       microphone.stop();

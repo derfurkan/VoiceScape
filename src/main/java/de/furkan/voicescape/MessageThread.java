@@ -128,7 +128,8 @@ public class MessageThread implements Runnable {
                         .forEach(
                             player -> {
                               if (player == null || player.getName() == null) return;
-
+                              String indicatorText =
+                                  config.indicatorString().replaceAll("%p", player.getName());
                               if (config.connectionIndicator()
                                   && client
                                           .getLocalPlayer()
@@ -148,10 +149,10 @@ public class MessageThread implements Runnable {
                                   if (!VoiceScapePlugin.indicatedPlayers.contains(player)) {
                                     VoiceScapePlugin.indicatedPlayers.add(player);
                                   }
-                                  player.setOverheadText("Connected [" + player.getName() + "]");
+                                  player.setOverheadText(indicatorText);
                                 }
                               } else if (player.getOverheadText() != null
-                                  && player.getOverheadText().startsWith("Connected")
+                                  && player.getOverheadText().equals(indicatorText)
                                   && (!config.connectionIndicator()
                                       || client
                                               .getLocalPlayer()
@@ -162,8 +163,8 @@ public class MessageThread implements Runnable {
                                 VoiceScapePlugin.indicatedPlayers.remove(player);
                               }
 
-                              if (player.getName().equals(client.getLocalPlayer().getName())
-                                  && !config.loopback()) return;
+                              if (player.getName().equals(client.getLocalPlayer().getName()))
+                                return;
 
                               if (client
                                           .getLocalPlayer()

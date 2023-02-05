@@ -97,7 +97,7 @@ public class VoiceScapePlugin extends Plugin {
 
     String[] options = new String[microphones.size()];
     for (int i = 0; i < microphones.size(); i++) {
-      options[i] = "<html><ul><font color=white>" + microphones.get(i) + "</font></ul></html>";
+      options[i] = "<html><font color=white>" + microphones.get(i) + "</font></html>";
     }
     String input =
         (String)
@@ -137,7 +137,7 @@ public class VoiceScapePlugin extends Plugin {
 
     String[] options = new String[speakers.size()];
     for (int i = 0; i < speakers.size(); i++) {
-      options[i] = "<html><ul><font color=white>" + speakers.get(i) + "</font></ul></html>";
+      options[i] = "<html><font color=white>" + speakers.get(i) + "</font></html>";
     }
     String input =
         (String)
@@ -216,6 +216,9 @@ public class VoiceScapePlugin extends Plugin {
   @Override
   protected void shutDown() throws Exception {
     isRunning = false;
+    registeredPlayers.clear();
+    indicatedPlayers.forEach(player -> player.setOverheadText(""));
+    indicatedPlayers.clear();
     if (voiceEngine != null || messageThread != null) {
       shutdownAll();
     }
@@ -225,6 +228,7 @@ public class VoiceScapePlugin extends Plugin {
   public void onConfigChanged(final ConfigChanged configChanged) {
     if (configChanged.getKey().equals("usecustomserver")) {
       if (voiceEngine != null || messageThread != null) {
+        isRunning = false;
         shutdownAll();
       }
       if (!config.useCustomServer()) {
@@ -242,8 +246,8 @@ public class VoiceScapePlugin extends Plugin {
             JOptionPane.showConfirmDialog(
                 null,
                 "Using a custom server can cause a security risk.\nOnly use a custom server if you trust the server owner.\n\n"
-                    + "Your microphone data is sent to the server and can be recorded by the server owner.\n"
-                    + "Your IP address is sent to the server and can be used to identify you\n\n"
+                    + "Your microphone data is sent to the server and might be recorded by the server owner.\n"
+                    + "Your IP address is sent to the server and might be used to identify you.\n\n"
                     + "Do you still want to use a custom server?",
                 "VoiceScape - Custom Server Warning",
                 JOptionPane.YES_NO_OPTION,
@@ -270,34 +274,22 @@ public class VoiceScapePlugin extends Plugin {
       }
     } else if (configChanged.getKey().equals("performancemode")) {
       if (config.performanceMode()) {
-
         JOptionPane.showMessageDialog(
             null,
             "Performance mode will reduce the quality of the voice chat and the amount of clients you can talk with to reduce CPU and network usage.\nThis is recommended for low end computers and/or slow internet connections.",
             "VoiceScape - Performance Mode",
             JOptionPane.WARNING_MESSAGE);
-
-        if (voiceEngine != null
-            && voiceEngine.voiceReceiverThread != null
-            && messageThread != null) {
-          shutdownAll();
-          JOptionPane.showMessageDialog(
-              null,
-              "You will need to re-enable the plugin for the changes to take effect.",
-              "VoiceScape - Performance Mode",
-              JOptionPane.INFORMATION_MESSAGE);
-        }
-      } else {
-        if (voiceEngine != null
-            && voiceEngine.voiceReceiverThread != null
-            && messageThread != null) {
-          shutdownAll();
-          JOptionPane.showMessageDialog(
-              null,
-              "You will need to re-enable the plugin for the changes to take effect.",
-              "VoiceScape - Performance Mode",
-              JOptionPane.INFORMATION_MESSAGE);
-        }
+      }
+      if (voiceEngine != null
+          && voiceEngine.voiceReceiverThread != null
+          && messageThread != null) {
+        isRunning = false;
+        shutdownAll();
+        JOptionPane.showMessageDialog(
+            null,
+            "You will need to re-enable the plugin for the changes to take effect.",
+            "VoiceScape - Performance Mode",
+            JOptionPane.INFORMATION_MESSAGE);
       }
     } else if (configChanged.getKey().equals("showownindicator")) {
       indicatedPlayers.forEach(
@@ -327,7 +319,9 @@ public class VoiceScapePlugin extends Plugin {
   }
 
   public void shutdownAll() {
+    registeredPlayers.clear();
     indicatedPlayers.forEach(player -> player.setOverheadText(""));
+    indicatedPlayers.clear();
     if (messageThread != null) messageThread.thread.interrupt();
     if (messageThread != null && messageThread.out != null) messageThread.out.println("disconnect");
 

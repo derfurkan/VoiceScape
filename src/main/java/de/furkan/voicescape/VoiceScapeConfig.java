@@ -19,7 +19,7 @@ public interface VoiceScapeConfig extends Config {
       name = "Other",
       description = "Other settings",
       position = 3,
-      closedByDefault = false)
+      closedByDefault = true)
   String otherSection = "other";
 
   @ConfigSection(
@@ -28,16 +28,6 @@ public interface VoiceScapeConfig extends Config {
       position = 0,
       closedByDefault = true)
   String serverSection = "Server";
-
-  @ConfigItem(
-      keyName = "loopback",
-      name = "Loopback",
-      description = "Hear yourself",
-      section = voiceSection,
-      position = 0)
-  default boolean loopback() {
-    return false;
-  }
 
   @ConfigItem(
       keyName = "muteself",
@@ -118,6 +108,16 @@ public interface VoiceScapeConfig extends Config {
       position = 1)
   default boolean showOwnIndicator() {
     return false;
+  }
+
+  @ConfigItem(
+      keyName = "indicatorstring",
+      name = "Indicator",
+      description = "The string that will be shown in the indicator",
+      section = indicatorSection,
+      position = 3)
+  default String indicatorString() {
+    return "Connected [%p]";
   }
 
   @Range(min = 2, max = 30)
