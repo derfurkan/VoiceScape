@@ -34,8 +34,19 @@ public class MessageThread implements Runnable {
     this.thread = new Thread(this, "MessageThread");
     try {
       connection = new Socket(ip, port);
+      connection.setTcpNoDelay(true);
+      connection.setSendBufferSize(1024);
+      connection.setReceiveBufferSize(1024);
       out = new PrintWriter(connection.getOutputStream(), true);
-      out.println("register:" + client.getLocalPlayer().getName());
+      new Timer()
+          .schedule(
+              new TimerTask() {
+                @Override
+                public void run() {
+                  out.println("register:" + client.getLocalPlayer().getName());
+                }
+              },
+              1200);
       this.thread.start();
     } catch (Exception e) {
       e.printStackTrace();
@@ -51,7 +62,7 @@ public class MessageThread implements Runnable {
               try {
                 BufferedReader in =
                     new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                String line = "None";
+                String line;
                 while ((line = in.readLine()) != null) {
                   if (line.startsWith("register ")) {
                     line = line.replace("register ", "");
@@ -158,7 +169,9 @@ public class MessageThread implements Runnable {
                                               .getLocalPlayer()
                                               .getWorldLocation()
                                               .distanceTo(player.getWorldLocation())
-                                          > config.indicatorDistance() || !VoiceScapePlugin.registeredPlayers.contains(player.getName()))) {
+                                          > config.indicatorDistance()
+                                      || !VoiceScapePlugin.registeredPlayers.contains(
+                                          player.getName()))) {
                                 player.setOverheadText("");
                                 VoiceScapePlugin.indicatedPlayers.remove(player);
                               }

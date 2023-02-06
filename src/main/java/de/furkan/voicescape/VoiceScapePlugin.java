@@ -280,9 +280,7 @@ public class VoiceScapePlugin extends Plugin {
             "VoiceScape - Performance Mode",
             JOptionPane.WARNING_MESSAGE);
       }
-      if (voiceEngine != null
-          && voiceEngine.voiceReceiverThread != null
-          && messageThread != null) {
+      if (voiceEngine != null && voiceEngine.voiceReceiverThread != null && messageThread != null) {
         isRunning = false;
         shutdownAll();
         JOptionPane.showMessageDialog(
@@ -310,7 +308,7 @@ public class VoiceScapePlugin extends Plugin {
               voiceEngine.completableFuture.whenCompleteAsync(
                   (aBoolean, throwable) -> {
                     if (aBoolean) {
-                      messageThread = new MessageThread(ip, 25555, client, config, gson);
+                      messageThread = new MessageThread(ip, 23333, client, config, gson);
                       voiceEngine.messageThread = messageThread;
                     }
                   });
