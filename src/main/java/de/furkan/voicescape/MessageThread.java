@@ -11,7 +11,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -35,22 +39,51 @@ public class MessageThread implements Runnable {
     try {
       connection = new Socket(ip, port);
       connection.setTcpNoDelay(true);
-      connection.setSendBufferSize(1024);
-      connection.setReceiveBufferSize(1024);
       out = new PrintWriter(connection.getOutputStream(), true);
       new Timer()
           .schedule(
               new TimerTask() {
                 @Override
                 public void run() {
-                  out.println("register:" + client.getLocalPlayer().getName());
+                  try {
+                    DatagramSocket datagramSocket = new DatagramSocket(findRandomOpenPort());
+                    datagramSocket.connect(InetAddress.getByName(ip), 24444);
+                    out.println(
+                        "register:"
+                            + client.getLocalPlayer().getName()
+                            + "#"
+                            + datagramSocket.getLocalPort());
+                    VoiceScapePlugin.getInstance().voiceEngine =
+                        new VoiceEngine(datagramSocket, config);
+                  } catch (Exception e) {
+                    e.printStackTrace();
+                    thread.interrupt();
+                  }
                 }
               },
               1200);
       this.thread.start();
     } catch (Exception e) {
+      SwingUtilities.invokeLater(
+          new Runnable() {
+            public void run() {
+              JOptionPane.showMessageDialog(
+                  null,
+                  "Could not connect to the server. Please try again later.",
+                  "VoiceScape - Error",
+                  JOptionPane.ERROR_MESSAGE);
+            }
+          });
       e.printStackTrace();
       thread.interrupt();
+    }
+  }
+
+  private int findRandomOpenPort() {
+    try (ServerSocket socket = new ServerSocket(new SecureRandom().nextInt(65535))) {
+      return socket.getLocalPort();
+    } catch (IOException e) {
+      return findRandomOpenPort();
     }
   }
 
@@ -63,7 +96,7 @@ public class MessageThread implements Runnable {
                 BufferedReader in =
                     new BufferedReader(new InputStreamReader(connection.getInputStream()));
                 String line;
-                while ((line = in.readLine()) != null) {
+                while ((line = in.readLine()) != null && VoiceScapePlugin.isRunning) {
                   if (line.startsWith("register ")) {
                     line = line.replace("register ", "");
                     ArrayList<String> registeredPlayers = new ArrayList<>();
@@ -99,6 +132,7 @@ public class MessageThread implements Runnable {
                     }
                   }
                 }
+                stop();
               } catch (Exception e) {
                 if (VoiceScapePlugin.isRunning) {
                   SwingUtilities.invokeLater(
@@ -114,7 +148,6 @@ public class MessageThread implements Runnable {
                       });
                 }
                 VoiceScapePlugin.indicatedPlayers.forEach(player -> player.setOverheadText(""));
-                e.printStackTrace();
                 stop();
               }
             });
@@ -129,7 +162,8 @@ public class MessageThread implements Runnable {
                 if ((client.getGameState() == GameState.LOGGED_IN
                         || client.getGameState() == GameState.HOPPING
                         || client.getGameState() == GameState.LOADING)
-                    && !thread.isInterrupted()) {
+                    && !thread.isInterrupted()
+                    && VoiceScapePlugin.isRunning) {
 
                   ArrayList<String> playerNames = Lists.newArrayList();
                   ArrayList<String> finalPlayerNames = playerNames;
@@ -191,9 +225,10 @@ public class MessageThread implements Runnable {
                             });
                   }
 
-                  if (playerNames.size() > 5 && config.performanceMode()) {
-                    playerNames = Lists.newArrayList(playerNames.subList(0, 5));
+                  if (playerNames.size() > config.maxClients() && config.performanceMode()) {
+                    playerNames = Lists.newArrayList(playerNames.subList(0, config.maxClients()));
                   }
+                  VoiceScapePlugin.getInstance().sendMicrophoneData = playerNames.size() > 0;
                   if (!playerNames.equals(lastUpdate)) {
                     out.println(gson.toJson(playerNames));
                     lastUpdate = playerNames;
@@ -204,7 +239,7 @@ public class MessageThread implements Runnable {
                 }
               }
             },
-            1000,
+            7000,
             1000);
   }
 
@@ -222,6 +257,8 @@ public class MessageThread implements Runnable {
 
   public void stop() {
     try {
+      if (VoiceScapePlugin.getInstance().voiceEngine != null)
+        VoiceScapePlugin.getInstance().voiceEngine.stopEngine();
       connection.close();
       out.close();
       thread.interrupt();

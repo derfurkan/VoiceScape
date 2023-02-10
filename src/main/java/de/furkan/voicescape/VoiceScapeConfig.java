@@ -16,11 +16,11 @@ public interface VoiceScapeConfig extends Config {
   String indicatorSection = "indicator";
 
   @ConfigSection(
-      name = "Other",
-      description = "Other settings",
+      name = "Performance",
+      description = "Performance settings",
       position = 3,
       closedByDefault = true)
-  String otherSection = "other";
+  String performanceSection = "performance";
 
   @ConfigSection(
       name = "Server",
@@ -39,7 +39,7 @@ public interface VoiceScapeConfig extends Config {
     return false;
   }
 
-  @Range(min = 0, max = 100)
+  @Range(min = 1, max = 100)
   @ConfigItem(
       keyName = "volume",
       name = "Player Volume",
@@ -84,10 +84,21 @@ public interface VoiceScapeConfig extends Config {
       keyName = "performancemode",
       name = "Performance Mode",
       description = "Use this if you have a bad internet connection or a slow computer",
-      section = otherSection,
-      position = 3)
+      section = performanceSection,
+      position = 0)
   default boolean performanceMode() {
     return false;
+  }
+
+  @Range(min = 2, max = 30)
+  @ConfigItem(
+      keyName = "maxclients",
+      name = "Max Clients",
+      description = "The maximum amount of clients that you can hear at the same time",
+      section = performanceSection,
+      position = 1)
+  default int maxClients() {
+    return 5;
   }
 
   @ConfigItem(

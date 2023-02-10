@@ -38,7 +38,9 @@ public class VoiceScapePlugin extends Plugin {
   public MessageThread messageThread;
   public String microphoneName;
   public String speakerName;
-  private VoiceEngine voiceEngine;
+  public VoiceEngine voiceEngine;
+  public boolean sendMicrophoneData = true;
+
   @Inject private Client client;
   @com.google.inject.Inject private Gson gson;
   @Inject private VoiceScapeConfig config;
@@ -71,7 +73,7 @@ public class VoiceScapePlugin extends Plugin {
                       showSpeakerSelectionPrompt();
 
                       menuManager.addPlayerMenuItem("Mute");
-                      menuManager.addPlayerMenuItem("Unmute");
+                      menuManager.addPlayerMenuItem("Un-mute");
 
                       isRunning = true;
                       if (client.getGameState() == GameState.LOGGED_IN) {
@@ -170,7 +172,7 @@ public class VoiceScapePlugin extends Plugin {
   public void onMenuOptionClicked(MenuOptionClicked menuOptionClicked) {
     if (messageThread != null
         && (menuOptionClicked.getMenuOption().equals("Mute")
-            || menuOptionClicked.getMenuOption().equals("Unmute"))
+            || menuOptionClicked.getMenuOption().equals("Un-mute"))
         && menuOptionClicked.getMenuTarget().contains(">")
         && menuOptionClicked.getMenuTarget().contains("<")) {
       String command = menuOptionClicked.getMenuOption().equals("Mute") ? "mute " : "unmute ";
@@ -181,7 +183,7 @@ public class VoiceScapePlugin extends Plugin {
           "",
           menuOptionClicked.getMenuOption().equals("Mute")
               ? "Muted " + menuOptionClicked.getMenuTarget().split(">")[1].split("<")[0]
-              : "Unmuted " + menuOptionClicked.getMenuTarget().split(">")[1].split("<")[0],
+              : "Un-muted " + menuOptionClicked.getMenuTarget().split(">")[1].split("<")[0],
           "");
     }
   }
@@ -196,7 +198,7 @@ public class VoiceScapePlugin extends Plugin {
                 if ((gameStateChanged.getGameState() == GameState.LOGGED_IN
                         || gameStateChanged.getGameState() == GameState.LOADING
                         || gameStateChanged.getGameState() == GameState.HOPPING)
-                    && (voiceEngine == null || messageThread == null)) {
+                    && (voiceEngine == null && messageThread == null)) {
                   if (!config.useCustomServer()) {
                     runPluginThreads(mainServerIP);
                   } else {
@@ -260,34 +262,13 @@ public class VoiceScapePlugin extends Plugin {
       if (voiceEngine != null) {
         voiceEngine.voiceReceiverThread.updateSettings();
       }
-    } else if (configChanged.getKey().equals("muteself")) {
-      if (config.muteSelf() && voiceEngine != null) {
-        new Timer()
-            .schedule(
-                new TimerTask() {
-                  @Override
-                  public void run() {
-                    voiceEngine.sendEmpty = true;
-                  }
-                },
-                1000);
-      }
     } else if (configChanged.getKey().equals("performancemode")) {
       if (config.performanceMode()) {
         JOptionPane.showMessageDialog(
             null,
-            "Performance mode will reduce the quality of the voice chat and the amount of clients you can talk with to reduce CPU and network usage.\nThis is recommended for low end computers and/or slow internet connections.",
+            "Performance mode will reduce the amount of clients you can talk with to reduce CPU and network usage.\nThis is recommended for low end computers and/or slow internet connections.",
             "VoiceScape - Performance Mode",
             JOptionPane.WARNING_MESSAGE);
-      }
-      if (voiceEngine != null && voiceEngine.voiceReceiverThread != null && messageThread != null) {
-        isRunning = false;
-        shutdownAll();
-        JOptionPane.showMessageDialog(
-            null,
-            "You will need to re-enable the plugin for the changes to take effect.",
-            "VoiceScape - Performance Mode",
-            JOptionPane.INFORMATION_MESSAGE);
       }
     } else if (configChanged.getKey().equals("showownindicator")) {
       indicatedPlayers.forEach(
@@ -304,14 +285,7 @@ public class VoiceScapePlugin extends Plugin {
   private void runPluginThreads(String ip) {
     new Thread(
             () -> {
-              voiceEngine = new VoiceEngine(ip, 24444, config);
-              voiceEngine.completableFuture.whenCompleteAsync(
-                  (aBoolean, throwable) -> {
-                    if (aBoolean) {
-                      messageThread = new MessageThread(ip, 23333, client, config, gson);
-                      voiceEngine.messageThread = messageThread;
-                    }
-                  });
+              messageThread = new MessageThread(ip, 23333, client, config, gson);
             })
         .start();
   }
@@ -320,10 +294,16 @@ public class VoiceScapePlugin extends Plugin {
     registeredPlayers.clear();
     indicatedPlayers.forEach(player -> player.setOverheadText(""));
     indicatedPlayers.clear();
-    if (messageThread != null) messageThread.thread.interrupt();
-    if (messageThread != null && messageThread.out != null) messageThread.out.println("disconnect");
+    if (messageThread != null) {
+      if (messageThread.out != null) messageThread.out.println("disconnect");
+      messageThread.stop();
+      messageThread.thread.interrupt();
+    }
 
-    voiceEngine.stopEngine();
+    if (voiceEngine != null) {
+      voiceEngine.stopEngine();
+      voiceEngine.thread.interrupt();
+    }
     voiceEngine = null;
     messageThread = null;
   }

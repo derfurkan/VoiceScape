@@ -1,17 +1,16 @@
 package de.furkan.voicescape;
 
 import javax.sound.sampled.*;
-import java.io.DataInputStream;
-import java.net.Socket;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 
 public class VoiceReceiverThread implements Runnable {
-  final Socket connection;
+  final DatagramSocket connection;
   final Thread thread;
   private final VoiceScapeConfig config;
-  DataInputStream soundIn;
   SourceDataLine inSpeaker;
 
-  public VoiceReceiverThread(Socket connection, VoiceScapeConfig voiceScapeConfig) {
+  public VoiceReceiverThread(DatagramSocket connection, VoiceScapeConfig voiceScapeConfig) {
     this.config = voiceScapeConfig;
     this.thread = new Thread(this, "VoiceReceiverThread");
     this.connection = connection;
@@ -20,8 +19,7 @@ public class VoiceReceiverThread implements Runnable {
 
   public void run() {
     try {
-      soundIn = new DataInputStream(connection.getInputStream());
-      AudioFormat af = new AudioFormat(44100, 16, 2, true, true);
+      AudioFormat af = new AudioFormat(44100, 16, 1, true, true);
       DataLine.Info info = new DataLine.Info(SourceDataLine.class, af);
 
       Mixer.Info[] mixerInfo = AudioSystem.getMixerInfo();
@@ -36,18 +34,25 @@ public class VoiceReceiverThread implements Runnable {
       inSpeaker = (SourceDataLine) AudioSystem.getLine(info);
       inSpeaker.open(af);
       int bytesRead = 0;
-      byte[] inSound = new byte[config.performanceMode() ? 1096 : 1024];
+      byte[] inSound = new byte[8192];
       updateSettings();
-      while (bytesRead != -1) {
+      while (bytesRead != -1 && VoiceScapePlugin.isRunning) {
         inSpeaker.stop();
-        bytesRead = soundIn.read(inSound);
+        DatagramPacket packet = new DatagramPacket(inSound, inSound.length);
+        connection.receive(packet);
+        VoicePacket rtpPacket = new VoicePacket(packet.getData(), packet.getLength());
+        int payload_length = rtpPacket.getpayload_length();
+        byte[] payload = new byte[payload_length];
+        rtpPacket.getpayload(payload);
+
+        bytesRead = packet.getLength();
         if (bytesRead >= 0) {
           inSpeaker.start();
-          inSpeaker.write(inSound, 0, bytesRead);
+          inSpeaker.write(payload, 0, payload_length);
         }
       }
+      stopReceiver();
     } catch (Exception e) {
-      e.printStackTrace();
       stopReceiver();
     }
   }
@@ -68,7 +73,6 @@ public class VoiceReceiverThread implements Runnable {
       connection.close();
       inSpeaker.stop();
       inSpeaker.close();
-      soundIn.close();
       thread.interrupt();
     } catch (Exception e) {
       e.printStackTrace();
