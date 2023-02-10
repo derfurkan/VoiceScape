@@ -51,9 +51,9 @@ public class VoiceReceiverThread implements Runnable {
           inSpeaker.write(payload, 0, payload_length);
         }
       }
-      stopReceiver();
+      VoiceScapePlugin.getInstance().shutdownAll();
     } catch (Exception e) {
-      stopReceiver();
+      VoiceScapePlugin.getInstance().shutdownAll();
     }
   }
 
@@ -70,9 +70,13 @@ public class VoiceReceiverThread implements Runnable {
 
   public void stopReceiver() {
     try {
-      connection.close();
-      inSpeaker.stop();
-      inSpeaker.close();
+      if (connection != null) {
+        connection.close();
+      }
+      if (inSpeaker != null) {
+        inSpeaker.stop();
+        inSpeaker.close();
+      }
       thread.interrupt();
     } catch (Exception e) {
       e.printStackTrace();

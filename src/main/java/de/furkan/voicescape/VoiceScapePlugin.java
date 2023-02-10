@@ -39,6 +39,8 @@ public class VoiceScapePlugin extends Plugin {
   public String microphoneName;
   public String speakerName;
   public VoiceEngine voiceEngine;
+
+  public VoiceReceiverThread voiceReceiver;
   public boolean sendMicrophoneData = true;
 
   @Inject private Client client;
@@ -260,7 +262,23 @@ public class VoiceScapePlugin extends Plugin {
       }
     } else if (configChanged.getKey().equals("volume")) {
       if (voiceEngine != null) {
-        voiceEngine.voiceReceiverThread.updateSettings();
+        voiceReceiver.updateSettings();
+      }
+    } else if (configChanged.getKey().equals("indicatorstring")) {
+      indicatedPlayers.forEach(
+          player -> {
+            if (player != null && player.getName() != null) {
+              player.setOverheadText("");
+              player.setOverheadText(config.indicatorString());
+            }
+          });
+    } else if (configChanged.getKey().equals("muteself")) {
+      if (voiceEngine != null) {
+        if (config.muteSelf()) {
+          voiceEngine.microphone.stop();
+        } else {
+          voiceEngine.microphone.start();
+        }
       }
     } else if (configChanged.getKey().equals("performancemode")) {
       if (config.performanceMode()) {
@@ -291,19 +309,22 @@ public class VoiceScapePlugin extends Plugin {
   }
 
   public void shutdownAll() {
+    isRunning = false;
     registeredPlayers.clear();
     indicatedPlayers.forEach(player -> player.setOverheadText(""));
     indicatedPlayers.clear();
     if (messageThread != null) {
       if (messageThread.out != null) messageThread.out.println("disconnect");
       messageThread.stop();
-      messageThread.thread.interrupt();
+    }
+    if (voiceReceiver != null) {
+      voiceReceiver.stopReceiver();
     }
 
     if (voiceEngine != null) {
       voiceEngine.stopEngine();
-      voiceEngine.thread.interrupt();
     }
+
     voiceEngine = null;
     messageThread = null;
   }

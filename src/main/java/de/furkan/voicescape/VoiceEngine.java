@@ -8,11 +8,8 @@ import java.net.DatagramSocket;
 public class VoiceEngine implements Runnable {
   private final VoiceScapeConfig voiceScapeConfig;
   private final DatagramSocket connection;
-  public VoiceReceiverThread voiceReceiverThread;
   public Thread thread;
-  public MessageThread messageThread;
-  private TargetDataLine microphone;
-  private boolean isRunning = true;
+  public TargetDataLine microphone;
 
   public VoiceEngine(DatagramSocket connection, VoiceScapeConfig voiceScapeConfig) {
     this.connection = connection;
@@ -35,7 +32,8 @@ public class VoiceEngine implements Runnable {
       microphone = (TargetDataLine) AudioSystem.getLine(info);
       microphone.open(audioFormat);
       microphone.start();
-      voiceReceiverThread = new VoiceReceiverThread(connection, voiceScapeConfig);
+      VoiceScapePlugin.getInstance().voiceReceiver =
+          new VoiceReceiverThread(connection, voiceScapeConfig);
       this.thread.start();
     } catch (LineUnavailableException e) {
       SwingUtilities.invokeLater(
@@ -48,9 +46,9 @@ public class VoiceEngine implements Runnable {
                   JOptionPane.ERROR_MESSAGE);
             }
           });
-      stopEngine();
+      VoiceScapePlugin.getInstance().shutdownAll();
     } catch (Exception e) {
-      stopEngine();
+      VoiceScapePlugin.getInstance().shutdownAll();
       thread.interrupt();
     }
   }
@@ -60,35 +58,34 @@ public class VoiceEngine implements Runnable {
     try {
       int bytesRead = 0;
       byte[] soundData = new byte[8192];
-      while (bytesRead != -1 && isRunning && VoiceScapePlugin.isRunning) {
-        bytesRead = microphone.read(soundData, 0, 8192);
-        if (bytesRead >= 0
-            && !voiceScapeConfig.muteSelf()
-            && VoiceScapePlugin.getInstance().sendMicrophoneData) {
-          VoicePacket rtp_packet = new VoicePacket(soundData, soundData.length);
-          int packet_length = rtp_packet.getlength();
-          byte[] packet_bits = new byte[packet_length];
-          rtp_packet.getpacket(packet_bits);
-          DatagramPacket packet = new DatagramPacket(packet_bits, packet_length);
-          connection.send(packet);
+      while (bytesRead != -1 && VoiceScapePlugin.isRunning) {
+        if (!voiceScapeConfig.muteSelf() && VoiceScapePlugin.getInstance().sendMicrophoneData) {
+          bytesRead = microphone.read(soundData, 0, 8192);
+          if (bytesRead >= 0) {
+            if (!microphone.isActive()) {
+              microphone.start();
+            }
+            VoicePacket rtp_packet = new VoicePacket(soundData, soundData.length);
+            int packet_length = rtp_packet.getlength();
+            byte[] packet_bits = new byte[packet_length];
+            rtp_packet.getpacket(packet_bits);
+            DatagramPacket packet = new DatagramPacket(packet_bits, packet_length);
+            connection.send(packet);
+          }
         }
       }
-      stopEngine();
+      VoiceScapePlugin.getInstance().shutdownAll();
     } catch (Exception e) {
       e.printStackTrace();
-      stopEngine();
+      VoiceScapePlugin.getInstance().shutdownAll();
     }
   }
 
   public void stopEngine() {
-
-    isRunning = false;
     try {
-      if (messageThread != null) messageThread.stop();
       connection.close();
       microphone.close();
       microphone.stop();
-      if (voiceReceiverThread != null) voiceReceiverThread.stopReceiver();
       thread.interrupt();
     } catch (Exception e) {
       throw new RuntimeException(e);

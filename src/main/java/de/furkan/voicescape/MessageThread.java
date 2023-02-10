@@ -11,10 +11,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.*;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Timer;
@@ -37,7 +34,8 @@ public class MessageThread implements Runnable {
     this.client = client;
     this.thread = new Thread(this, "MessageThread");
     try {
-      connection = new Socket(ip, port);
+      connection = new Socket();
+      connection.connect(new InetSocketAddress(ip, port), 5000);
       connection.setTcpNoDelay(true);
       out = new PrintWriter(connection.getOutputStream(), true);
       new Timer()
@@ -132,7 +130,7 @@ public class MessageThread implements Runnable {
                     }
                   }
                 }
-                stop();
+                VoiceScapePlugin.getInstance().shutdownAll();
               } catch (Exception e) {
                 if (VoiceScapePlugin.isRunning) {
                   SwingUtilities.invokeLater(
@@ -148,7 +146,7 @@ public class MessageThread implements Runnable {
                       });
                 }
                 VoiceScapePlugin.indicatedPlayers.forEach(player -> player.setOverheadText(""));
-                stop();
+                VoiceScapePlugin.getInstance().shutdownAll();
               }
             });
 
@@ -257,10 +255,9 @@ public class MessageThread implements Runnable {
 
   public void stop() {
     try {
-      if (VoiceScapePlugin.getInstance().voiceEngine != null)
-        VoiceScapePlugin.getInstance().voiceEngine.stopEngine();
-      connection.close();
-      out.close();
+
+      if (connection != null) connection.close();
+      if (out != null) out.close();
       thread.interrupt();
     } catch (IOException e) {
       throw new RuntimeException(e);
