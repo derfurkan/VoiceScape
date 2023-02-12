@@ -4,7 +4,6 @@ import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Player;
@@ -33,6 +32,7 @@ public class VoiceScapePlugin extends Plugin {
   public static boolean isRunning;
   public static ArrayList<String> registeredPlayers = Lists.newArrayList();
 
+  public static ArrayList<String> mutedPlayers = Lists.newArrayList();
   public static ArrayList<Player> indicatedPlayers = Lists.newArrayList();
   private final String mainServerIP = "127.0.0.1";
   public MessageThread messageThread;
@@ -173,20 +173,14 @@ public class VoiceScapePlugin extends Plugin {
   @Subscribe
   public void onMenuOptionClicked(MenuOptionClicked menuOptionClicked) {
     if (messageThread != null
-        && (menuOptionClicked.getMenuOption().equals("Mute")
-            || menuOptionClicked.getMenuOption().equals("Un-mute"))
         && menuOptionClicked.getMenuTarget().contains(">")
         && menuOptionClicked.getMenuTarget().contains("<")) {
-      String command = menuOptionClicked.getMenuOption().equals("Mute") ? "mute " : "unmute ";
-      messageThread.out.println(
-          command + menuOptionClicked.getMenuTarget().split(">")[1].split("<")[0]);
-      client.addChatMessage(
-          ChatMessageType.GAMEMESSAGE,
-          "",
-          menuOptionClicked.getMenuOption().equals("Mute")
-              ? "Muted " + menuOptionClicked.getMenuTarget().split(">")[1].split("<")[0]
-              : "Un-muted " + menuOptionClicked.getMenuTarget().split(">")[1].split("<")[0],
-          "");
+      String playerName = menuOptionClicked.getMenuTarget().split(">")[1].split("<")[0];
+      if (menuOptionClicked.getMenuOption().equals("Mute")) {
+        mutedPlayers.add(playerName);
+      } else if (menuOptionClicked.getMenuOption().equals("Un-mute")) {
+        mutedPlayers.remove(playerName);
+      }
     }
   }
 

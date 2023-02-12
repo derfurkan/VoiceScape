@@ -216,8 +216,8 @@ public class MessageThread implements Runnable {
                                           .getWorldLocation()
                                           .distanceTo(player.getWorldLocation())
                                       <= config.minDistance()
-                                  && VoiceScapePlugin.registeredPlayers.contains(
-                                      player.getName())) {
+                                  && VoiceScapePlugin.registeredPlayers.contains(player.getName())
+                                  && !VoiceScapePlugin.mutedPlayers.contains(player.getName())) {
                                 finalPlayerNames.add(player.getName());
                               }
                             });
