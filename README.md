@@ -7,7 +7,7 @@ The plugin connects your client to a voice and message server on two separate th
 # What is it NOT
 VoiceScape is not a alternative to discord or other VoIP applications.
 Its a fun plugin where you run random into players and can talk with them if you are woodcutting or banking etc.
-If you want to fight a Boss with you clan/friends use other VoIP's like Discord instead.
+If you want to fight a Boss with your clan/friends use other VoIP's like Discord instead.
 
 ## Here is the server that can be hosted by anyone: [VoiceScape-Server](https://github.com/derfurkan/VoiceScape-Server)
 ![alt text](https://i.ibb.co/bsYHxZ4/Screenshot-1.png)
