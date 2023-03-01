@@ -34,7 +34,6 @@ public class VoiceScapePlugin extends Plugin {
 
   public static ArrayList<String> mutedPlayers = Lists.newArrayList();
   public static ArrayList<Player> indicatedPlayers = Lists.newArrayList();
-  private final String mainServerIP = "127.0.0.1";
   public MessageThread messageThread;
   public String microphoneName;
   public String speakerName;
@@ -83,7 +82,6 @@ public class VoiceScapePlugin extends Plugin {
                           shutdownAll();
                         }
                         if (config.useCustomServer()) runPluginThreads(config.customServerIP());
-                        else runPluginThreads(mainServerIP);
                       }
                     });
               }
@@ -195,9 +193,7 @@ public class VoiceScapePlugin extends Plugin {
                         || gameStateChanged.getGameState() == GameState.LOADING
                         || gameStateChanged.getGameState() == GameState.HOPPING)
                     && (voiceEngine == null && messageThread == null)) {
-                  if (!config.useCustomServer()) {
-                    runPluginThreads(mainServerIP);
-                  } else {
+                  if (config.useCustomServer()) {
                     runPluginThreads(config.customServerIP());
                   }
                 } else if ((gameStateChanged.getGameState() != GameState.LOGGED_IN
@@ -224,37 +220,31 @@ public class VoiceScapePlugin extends Plugin {
 
   @Subscribe
   public void onConfigChanged(final ConfigChanged configChanged) {
+
     if (configChanged.getKey().equals("usecustomserver")) {
       if (voiceEngine != null || messageThread != null) {
         isRunning = false;
         shutdownAll();
       }
-      if (!config.useCustomServer()) {
+      if (config.useCustomServer()) {
         int option =
             JOptionPane.showConfirmDialog(
                 null,
-                "Do you want to connect to " + mainServerIP + " instead?",
-                "VoiceScape",
-                JOptionPane.YES_NO_OPTION);
-        if (option == JOptionPane.YES_OPTION) {
-          runPluginThreads(mainServerIP);
-        }
-      } else if (config.useCustomServer()) {
-        int option =
-            JOptionPane.showConfirmDialog(
-                null,
-                "Using a custom server can cause a security risk.\nOnly use a custom server if you trust the server owner.\n\n"
+                "Only connect to where you trust the server owner.\n"
                     + "Your microphone data is sent to the server and might be recorded by the server owner.\n"
-                    + "Your IP address is sent to the server and might be used to identify you.\n\n"
-                    + "Do you still want to use a custom server?",
-                "VoiceScape - Custom Server Warning",
+                    + "Your IP address and player name is sent to the server and might be used to identify you.\n\n"
+                    + "Do you want to connect?",
+                "VoiceScape - Warning",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
         if (option == JOptionPane.YES_OPTION) {
           runPluginThreads(config.customServerIP());
         }
+      } else {
+        shutdownAll();
       }
     } else if (configChanged.getKey().equals("volume")) {
+
       if (voiceEngine != null) {
         voiceReceiver.updateSettings();
       }

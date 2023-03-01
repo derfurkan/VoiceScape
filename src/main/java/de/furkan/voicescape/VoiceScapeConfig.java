@@ -64,8 +64,8 @@ public interface VoiceScapeConfig extends Config {
 
   @ConfigItem(
       keyName = "usecustomserver",
-      name = "Connect to custom server instead",
-      description = "Connect to custom server instead of the default one",
+      name = "Connect to server",
+      description = "Connect to a server",
       section = serverSection)
   default boolean useCustomServer() {
     return false;
@@ -73,8 +73,8 @@ public interface VoiceScapeConfig extends Config {
 
   @ConfigItem(
       keyName = "customserverip",
-      name = "Custom Server IP",
-      description = "The IP of the custom server",
+      name = "Server IP",
+      description = "The IP of the server",
       section = serverSection)
   default String customServerIP() {
     return "127.0.0.1";
@@ -124,7 +124,7 @@ public interface VoiceScapeConfig extends Config {
   @ConfigItem(
       keyName = "indicatorstring",
       name = "Indicator",
-      description = "The string that will be shown in the indicator",
+      description = "The string that will be shown as the indicator",
       section = indicatorSection,
       position = 3)
   default String indicatorString() {
