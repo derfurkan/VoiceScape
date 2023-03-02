@@ -83,6 +83,15 @@ public interface VoiceScapeConfig extends Config {
   }
 
   @ConfigItem(
+      keyName = "defaultserver",
+      name = "Default Servers",
+      description = "A collection of default servers",
+      section = serverSection)
+  default DEFAULT_SERVERS defaultServers() {
+    return DEFAULT_SERVERS.CUSTOM;
+  }
+
+  @ConfigItem(
       keyName = "usecustomserver",
       name = "Connect to server",
       description = "Connect to a server",
@@ -93,7 +102,7 @@ public interface VoiceScapeConfig extends Config {
 
   @ConfigItem(
       keyName = "customserverip",
-      name = "Server IP",
+      name = "Custom Server IP",
       description = "The IP of the server",
       section = serverSection)
   default String customServerIP() {
@@ -160,5 +169,10 @@ public interface VoiceScapeConfig extends Config {
       position = 2)
   default int indicatorDistance() {
     return 5;
+  }
+
+  enum DEFAULT_SERVERS {
+    CUSTOM,
+    VERAC_PRO
   }
 }

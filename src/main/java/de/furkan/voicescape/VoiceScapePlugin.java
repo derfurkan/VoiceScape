@@ -41,14 +41,13 @@ public class VoiceScapePlugin extends Plugin {
   public static ArrayList<String> mutedPlayers = Lists.newArrayList();
   public static ArrayList<Player> indicatedPlayers = Lists.newArrayList();
   public static boolean canSpeak = false;
+  private final HashMap<String, String> nameHashes = new HashMap<>();
   public MessageThread messageThread;
   public String microphoneName;
   public String speakerName;
   public VoiceEngine voiceEngine;
-
   public VoiceReceiverThread voiceReceiver;
   public boolean sendMicrophoneData = true;
-
   @Inject private Client client;
   @com.google.inject.Inject private Gson gson;
   @Inject private VoiceScapeConfig config;
@@ -66,7 +65,6 @@ public class VoiceScapePlugin extends Plugin {
       };
   @Inject private MenuManager menuManager;
   @Inject private KeyManager keyManager;
-  private final HashMap<String, String> nameHashes = new HashMap<>();
 
   public static VoiceScapePlugin getInstance() {
     return VOICE_SCAPE_PLUGIN_INSTANCE;
@@ -101,10 +99,8 @@ public class VoiceScapePlugin extends Plugin {
 
                       isRunning = true;
                       if (client.getGameState() == GameState.LOGGED_IN) {
-                        if (voiceEngine != null && messageThread != null) {
-                          shutdownAll();
-                        }
-                        if (config.useCustomServer()) runPluginThreads(config.customServerIP());
+                        shutdownAll();
+                        if (config.useCustomServer()) runPluginThreads();
                       }
                     });
               }
@@ -217,7 +213,7 @@ public class VoiceScapePlugin extends Plugin {
                         || gameStateChanged.getGameState() == GameState.HOPPING)
                     && (voiceEngine == null && messageThread == null)) {
                   if (config.useCustomServer()) {
-                    runPluginThreads(config.customServerIP());
+                    runPluginThreads();
                   }
                 } else if ((gameStateChanged.getGameState() != GameState.LOGGED_IN
                         && gameStateChanged.getGameState() != GameState.LOADING
@@ -245,10 +241,6 @@ public class VoiceScapePlugin extends Plugin {
   public void onConfigChanged(final ConfigChanged configChanged) {
 
     if (configChanged.getKey().equals("usecustomserver")) {
-      if (voiceEngine != null || messageThread != null) {
-        isRunning = false;
-        shutdownAll();
-      }
       if (config.useCustomServer()) {
         int option =
             JOptionPane.showConfirmDialog(
@@ -261,7 +253,7 @@ public class VoiceScapePlugin extends Plugin {
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
         if (option == JOptionPane.YES_OPTION) {
-          runPluginThreads(config.customServerIP());
+          runPluginThreads();
         }
       } else {
         shutdownAll();
@@ -270,6 +262,18 @@ public class VoiceScapePlugin extends Plugin {
 
       if (voiceEngine != null) {
         voiceReceiver.updateSettings();
+      }
+    } else if (configChanged.getKey().equals("defaultserver")) {
+      if (config.defaultServers() != VoiceScapeConfig.DEFAULT_SERVERS.CUSTOM) {
+        JOptionPane.showMessageDialog(
+            null,
+            "Beware that the default servers arent being hosted by me and might be down or modified.\nUse them at your own risk.",
+            "VoiceScape - Warning",
+            JOptionPane.WARNING_MESSAGE);
+      }
+      shutdownAll();
+      if (config.useCustomServer()) {
+        runPluginThreads();
       }
     } else if (configChanged.getKey().equals("indicatorstring")) {
       indicatedPlayers.forEach(
@@ -307,10 +311,28 @@ public class VoiceScapePlugin extends Plugin {
     }
   }
 
-  private void runPluginThreads(String ip) {
+  public void runPluginThreads() {
     new Thread(
             () -> {
+              if((client.getGameState() == GameState.LOGGED_IN
+                      || client.getGameState() == GameState.LOADING
+                      || client.getGameState() == GameState.HOPPING)) {
+              String ip = "127.0.0.1";
+              if (config.defaultServers() == VoiceScapeConfig.DEFAULT_SERVERS.CUSTOM) {
+                ip = config.customServerIP();
+              } else if (config.defaultServers() == VoiceScapeConfig.DEFAULT_SERVERS.VERAC_PRO) {
+                ip = "verac.pro";
+              }
               messageThread = new MessageThread(ip, 23333, client, config, gson);
+              } else {
+                SwingUtilities.invokeLater(() -> {
+                  JOptionPane.showMessageDialog(
+                          null,
+                          "You need to be logged in to connect to a server.",
+                          "VoiceScape - Error",
+                          JOptionPane.ERROR_MESSAGE);
+                });
+              }
             })
         .start();
   }
@@ -343,8 +365,8 @@ public class VoiceScapePlugin extends Plugin {
       final MessageDigest digest = MessageDigest.getInstance("SHA-256");
       final byte[] hash = digest.digest(base.getBytes(StandardCharsets.UTF_8));
       final StringBuilder hexString = new StringBuilder();
-      for (int i = 0; i < hash.length; i++) {
-        final String hex = Integer.toHexString(0xff & hash[i]);
+      for (byte b : hash) {
+        final String hex = Integer.toHexString(0xff & b);
         if (hex.length() == 1) hexString.append('0');
         hexString.append(hex);
       }

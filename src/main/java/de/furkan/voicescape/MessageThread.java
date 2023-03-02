@@ -45,7 +45,7 @@ public class MessageThread implements Runnable {
                 public void run() {
                   try {
                     DatagramSocket datagramSocket = new DatagramSocket(findRandomOpenPort());
-                    datagramSocket.connect(InetAddress.getByName(ip), 24444);
+                    datagramSocket.connect(new InetSocketAddress(ip,24444));
                     out.println(
                         "register:"
                             + VoiceScapePlugin.getInstance()
@@ -55,6 +55,16 @@ public class MessageThread implements Runnable {
                     VoiceScapePlugin.getInstance().voiceEngine =
                         new VoiceEngine(datagramSocket, config);
                   } catch (Exception e) {
+                    SwingUtilities.invokeLater(
+                        new Runnable() {
+                          public void run() {
+                            JOptionPane.showMessageDialog(
+                                null,
+                                "Could not connect to the server. Please try again later.",
+                                "VoiceScape - Error",
+                                JOptionPane.ERROR_MESSAGE);
+                          }
+                        });
                     e.printStackTrace();
                     thread.interrupt();
                   }
@@ -63,14 +73,19 @@ public class MessageThread implements Runnable {
               1200);
       this.thread.start();
     } catch (Exception e) {
+        VoiceScapePlugin.getInstance().shutdownAll();
       SwingUtilities.invokeLater(
           new Runnable() {
             public void run() {
-              JOptionPane.showMessageDialog(
+              int option = JOptionPane.showConfirmDialog(
                   null,
-                  "Could not connect to the server. Please try again later.",
+                  "Could not connect to the server.\nDo you want to try again?",
                   "VoiceScape - Error",
+                  JOptionPane.YES_NO_OPTION,
                   JOptionPane.ERROR_MESSAGE);
+              if(option == JOptionPane.YES_OPTION) {
+                   VoiceScapePlugin.getInstance().runPluginThreads();
+              }
             }
           });
       e.printStackTrace();
@@ -96,6 +111,7 @@ public class MessageThread implements Runnable {
                     new BufferedReader(new InputStreamReader(connection.getInputStream()));
                 String line;
                 while ((line = in.readLine()) != null && VoiceScapePlugin.isRunning) {
+                  System.out.println("Server: " + line);
                   if (line.startsWith("register ")) {
                     line = line.replace("register ", "");
                     ArrayList<String> registeredPlayers = new ArrayList<>();
@@ -133,20 +149,27 @@ public class MessageThread implements Runnable {
                 }
                 VoiceScapePlugin.getInstance().shutdownAll();
               } catch (Exception e) {
+
+                VoiceScapePlugin.indicatedPlayers.forEach(player -> player.setOverheadText(""));
                 if (VoiceScapePlugin.isRunning) {
                   SwingUtilities.invokeLater(
                       new Runnable() {
                         public void run() {
-                          JOptionPane.showMessageDialog(
-                              null,
-                              "Connection to the voice server has been lost.\nHere are a few reasons why this could happen:\n- The server is not online\n- The server has rejected your request\n- You are using a proxy or VPN\n- You firewall/antivirus blocks the connection to the server\n\n"
-                                  + "Please wait one minute and try again.",
-                              "VoiceScape - Error",
-                              JOptionPane.ERROR_MESSAGE);
+                          int option =
+                              JOptionPane.showConfirmDialog(
+                                  null,
+                                  "Connection to the voice server has been lost.\nHere are a few reasons why this could happen:\n- The server is not online\n- The server has rejected your request\n- You are using a proxy or VPN\n- You firewall/antivirus blocks the connection to the server\n\n"
+                                      + "Do you want to reconnect?",
+                                  "VoiceScape - Error",
+                                  JOptionPane.YES_NO_OPTION,
+                                  JOptionPane.ERROR_MESSAGE);
+
+                          if (option == JOptionPane.YES_OPTION) {
+                            VoiceScapePlugin.getInstance().runPluginThreads();
+                          }
                         }
                       });
                 }
-                VoiceScapePlugin.indicatedPlayers.forEach(player -> player.setOverheadText(""));
                 VoiceScapePlugin.getInstance().shutdownAll();
               }
             });
