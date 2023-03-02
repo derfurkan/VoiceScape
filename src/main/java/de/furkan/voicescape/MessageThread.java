@@ -48,7 +48,8 @@ public class MessageThread implements Runnable {
                     datagramSocket.connect(InetAddress.getByName(ip), 24444);
                     out.println(
                         "register:"
-                            + client.getLocalPlayer().getName()
+                            + VoiceScapePlugin.getInstance()
+                                .hashWithSha256(client.getLocalPlayer().getName())
                             + "#"
                             + datagramSocket.getLocalPort());
                     VoiceScapePlugin.getInstance().voiceEngine =
@@ -182,7 +183,8 @@ public class MessageThread implements Runnable {
                                   && (player.getOverheadText() == null
                                       || player.getOverheadText().isEmpty())
                                   && VoiceScapePlugin.registeredPlayers.contains(
-                                      player.getName())) {
+                                      VoiceScapePlugin.getInstance()
+                                          .hashWithSha256(player.getName()))) {
 
                                 if (player.getName().equals(client.getLocalPlayer().getName())
                                     && !config.showOwnIndicator()) {
@@ -203,7 +205,8 @@ public class MessageThread implements Runnable {
                                               .distanceTo(player.getWorldLocation())
                                           > config.indicatorDistance()
                                       || !VoiceScapePlugin.registeredPlayers.contains(
-                                          player.getName()))) {
+                                          VoiceScapePlugin.getInstance()
+                                              .hashWithSha256(player.getName())))) {
                                 player.setOverheadText("");
                                 VoiceScapePlugin.indicatedPlayers.remove(player);
                               }
@@ -216,9 +219,13 @@ public class MessageThread implements Runnable {
                                           .getWorldLocation()
                                           .distanceTo(player.getWorldLocation())
                                       <= config.minDistance()
-                                  && VoiceScapePlugin.registeredPlayers.contains(player.getName())
+                                  && VoiceScapePlugin.registeredPlayers.contains(
+                                      VoiceScapePlugin.getInstance()
+                                          .hashWithSha256(player.getName()))
                                   && !VoiceScapePlugin.mutedPlayers.contains(player.getName())) {
-                                finalPlayerNames.add(player.getName());
+                                finalPlayerNames.add(
+                                    VoiceScapePlugin.getInstance()
+                                        .hashWithSha256(player.getName()));
                               }
                             });
                   }
@@ -245,7 +252,8 @@ public class MessageThread implements Runnable {
     if (client.getPlayers().size() > 0) {
       for (Player player : client.getPlayers()) {
         if (player == null || player.getName() == null) continue;
-        if (VoiceScapePlugin.registeredPlayers.contains(player.getName())) {
+        if (VoiceScapePlugin.registeredPlayers.contains(
+            VoiceScapePlugin.getInstance().hashWithSha256(player.getName()))) {
           return true;
         }
       }

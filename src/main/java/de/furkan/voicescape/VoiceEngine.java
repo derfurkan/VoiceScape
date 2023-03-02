@@ -56,6 +56,7 @@ public class VoiceEngine implements Runnable {
 
   @Override
   public void run() {
+
     try {
       int bytesRead = 0;
       byte[] soundData = new byte[8192];

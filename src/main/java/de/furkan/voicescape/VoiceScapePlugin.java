@@ -23,7 +23,10 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Mixer;
 import javax.swing.*;
 import java.awt.event.KeyEvent;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -63,6 +66,7 @@ public class VoiceScapePlugin extends Plugin {
       };
   @Inject private MenuManager menuManager;
   @Inject private KeyManager keyManager;
+  private final HashMap<String, String> nameHashes = new HashMap<>();
 
   public static VoiceScapePlugin getInstance() {
     return VOICE_SCAPE_PLUGIN_INSTANCE;
@@ -312,6 +316,7 @@ public class VoiceScapePlugin extends Plugin {
   }
 
   public void shutdownAll() {
+    nameHashes.clear();
     isRunning = false;
     registeredPlayers.clear();
     indicatedPlayers.forEach(player -> player.setOverheadText(""));
@@ -330,6 +335,24 @@ public class VoiceScapePlugin extends Plugin {
 
     voiceEngine = null;
     messageThread = null;
+  }
+
+  public String hashWithSha256(final String base) {
+    if (nameHashes.containsKey(base)) return nameHashes.get(base);
+    try {
+      final MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      final byte[] hash = digest.digest(base.getBytes(StandardCharsets.UTF_8));
+      final StringBuilder hexString = new StringBuilder();
+      for (int i = 0; i < hash.length; i++) {
+        final String hex = Integer.toHexString(0xff & hash[i]);
+        if (hex.length() == 1) hexString.append('0');
+        hexString.append(hex);
+      }
+      nameHashes.put(base, hexString.toString());
+      return hexString.toString();
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   @Provides
