@@ -100,7 +100,8 @@ public class VoiceScapePlugin extends Plugin {
                       isRunning = true;
                       if (client.getGameState() == GameState.LOGGED_IN) {
                         shutdownAll();
-                        if (config.useCustomServer()) runPluginThreads();
+                        if (config.useCustomServer())
+                          runPluginThreads(client,config);
                       }
                     });
               }
@@ -213,7 +214,7 @@ public class VoiceScapePlugin extends Plugin {
                         || gameStateChanged.getGameState() == GameState.HOPPING)
                     && (voiceEngine == null && messageThread == null)) {
                   if (config.useCustomServer()) {
-                    runPluginThreads();
+                    runPluginThreads(client,config);
                   }
                 } else if ((gameStateChanged.getGameState() != GameState.LOGGED_IN
                         && gameStateChanged.getGameState() != GameState.LOADING
@@ -255,7 +256,7 @@ public class VoiceScapePlugin extends Plugin {
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
         if (option == JOptionPane.YES_OPTION) {
-          runPluginThreads();
+          runPluginThreads(client,config);
         }
       } else {
         shutdownAll();
@@ -269,13 +270,13 @@ public class VoiceScapePlugin extends Plugin {
       if (config.defaultServers() != VoiceScapeConfig.DEFAULT_SERVERS.CUSTOM) {
         JOptionPane.showMessageDialog(
             null,
-            "Beware that the default servers arent being hosted by me and might be down or modified.\nUse them at your own risk.",
+            "Default servers are not trusted these are just servers provided by the community.\nThey might be modified or offline so use them at your own risk!",
             "VoiceScape - Warning",
             JOptionPane.WARNING_MESSAGE);
       }
       shutdownAll();
       if (config.useCustomServer()) {
-        runPluginThreads();
+        runPluginThreads(client,config);
       }
     } else if (configChanged.getKey().equals("indicatorstring")) {
       indicatedPlayers.forEach(
@@ -313,7 +314,7 @@ public class VoiceScapePlugin extends Plugin {
     }
   }
 
-  public void runPluginThreads() {
+  public void runPluginThreads(Client client, VoiceScapeConfig config) {
     new Thread(
             () -> {
               if((client.getGameState() == GameState.LOGGED_IN
