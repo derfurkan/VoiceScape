@@ -63,6 +63,26 @@ public interface VoiceScapeConfig extends Config {
   }
 
   @ConfigItem(
+      keyName = "pushtotalk",
+      name = "Push-To-Talk",
+      description = "If enabled, you have to hold a key to talk",
+      section = voiceSection,
+      position = 4)
+  default boolean pushToTalk() {
+    return true;
+  }
+
+  @ConfigItem(
+      keyName = "pushtotalkkey",
+      name = "Push-To-Talk Keybind",
+      description = "The keybind to use for push-to-talk",
+      section = voiceSection,
+      position = 5)
+  default Keybind pushToTalkBind() {
+    return Keybind.NOT_SET;
+  }
+
+  @ConfigItem(
       keyName = "usecustomserver",
       name = "Connect to server",
       description = "Connect to a server",

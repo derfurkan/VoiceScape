@@ -64,6 +64,9 @@ public class VoiceEngine implements Runnable {
         if (bytesRead >= 0
             && !voiceScapeConfig.muteSelf()
             && VoiceScapePlugin.getInstance().sendMicrophoneData) {
+          if (voiceScapeConfig.pushToTalk() && !VoiceScapePlugin.canSpeak) {
+            continue;
+          }
           VoicePacket rtp_packet = new VoicePacket(soundData, soundData.length);
           int packet_length = rtp_packet.getlength();
           byte[] packet_bits = new byte[packet_length];

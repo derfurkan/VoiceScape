@@ -12,14 +12,17 @@ import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.input.KeyManager;
 import net.runelite.client.menus.MenuManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.util.HotkeyListener;
 
 import javax.inject.Inject;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Mixer;
 import javax.swing.*;
+import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -34,6 +37,7 @@ public class VoiceScapePlugin extends Plugin {
 
   public static ArrayList<String> mutedPlayers = Lists.newArrayList();
   public static ArrayList<Player> indicatedPlayers = Lists.newArrayList();
+  public static boolean canSpeak = false;
   public MessageThread messageThread;
   public String microphoneName;
   public String speakerName;
@@ -45,7 +49,20 @@ public class VoiceScapePlugin extends Plugin {
   @Inject private Client client;
   @com.google.inject.Inject private Gson gson;
   @Inject private VoiceScapeConfig config;
+  private final HotkeyListener hotkeyListener =
+      new HotkeyListener(() -> this.config.pushToTalkBind()) {
+        @Override
+        public void keyPressed(KeyEvent e) {
+          canSpeak = true;
+        }
+
+        @Override
+        public void keyReleased(KeyEvent e) {
+          canSpeak = false;
+        }
+      };
   @Inject private MenuManager menuManager;
+  @Inject private KeyManager keyManager;
 
   public static VoiceScapePlugin getInstance() {
     return VOICE_SCAPE_PLUGIN_INSTANCE;
@@ -62,6 +79,8 @@ public class VoiceScapePlugin extends Plugin {
           JOptionPane.ERROR_MESSAGE);
       return;
     }
+
+    keyManager.registerKeyListener(hotkeyListener);
 
     new Timer()
         .schedule(
