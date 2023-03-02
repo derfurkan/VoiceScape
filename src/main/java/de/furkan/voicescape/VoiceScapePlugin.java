@@ -228,6 +228,8 @@ public class VoiceScapePlugin extends Plugin {
 
   @Override
   protected void shutDown() throws Exception {
+    menuManager.removePlayerMenuItem("Mute");
+    menuManager.removePlayerMenuItem("Un-mute");
     isRunning = false;
     registeredPlayers.clear();
     indicatedPlayers.forEach(player -> player.setOverheadText(""));
