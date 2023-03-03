@@ -308,8 +308,10 @@ public class VoiceScapePlugin extends Plugin {
                 String ip = "127.0.0.1";
                 if (config.defaultServers() == VoiceScapeConfig.DEFAULT_SERVERS.CUSTOM) {
                   ip = config.customServerIP();
-                } else if (config.defaultServers() == VoiceScapeConfig.DEFAULT_SERVERS.VERAC_PRO) {
+                } else if (config.defaultServers() == VoiceScapeConfig.DEFAULT_SERVERS.VERAC) {
                   ip = "verac.pro";
+                } else if (config.defaultServers() == VoiceScapeConfig.DEFAULT_SERVERS.THEBEERKEG) {
+                  ip = "thebeerkeg.net";
                 }
                 messageThread = new MessageThread(ip, 23333, client, config, gson);
               } else {

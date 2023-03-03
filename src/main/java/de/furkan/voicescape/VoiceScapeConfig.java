@@ -201,6 +201,7 @@ public interface VoiceScapeConfig extends Config {
 
   enum DEFAULT_SERVERS {
     CUSTOM,
-    VERAC_PRO
+    VERAC,
+    THEBEERKEG
   }
 }

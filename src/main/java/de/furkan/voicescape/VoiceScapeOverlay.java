@@ -23,7 +23,7 @@ public class VoiceScapeOverlay extends Overlay {
     if (config.connectionIndicator() && VoiceScapePlugin.isRunning) {
       for (Player player : client.getPlayers()) {
         if (player.getName() == null
-            || client.getLocalPlayer().getLocalLocation().distanceTo(player.getLocalLocation())
+            || client.getLocalPlayer().getWorldLocation().distanceTo(player.getWorldLocation())
                 > config.indicatorDistance()) {
           continue;
         }
@@ -52,9 +52,11 @@ public class VoiceScapeOverlay extends Overlay {
     Point textLocation =
         player.getCanvasTextLocation(graphics, player.getName(), player.getLogicalHeight() + 60);
     if (textLocation != null) {
-      textLocation = new Point(textLocation.getX() - 40, textLocation.getY());
       String indicatorText = config.indicatorString();
       indicatorText = indicatorText.replace("%p", player.getName());
+      int stringLength = graphics.getFontMetrics().stringWidth(indicatorText) - 40;
+      textLocation = new Point(textLocation.getX() - stringLength / 2, textLocation.getY());
+
       OverlayUtil.renderTextLocation(
           graphics, textLocation, indicatorText, config.indicatorColor());
     }
