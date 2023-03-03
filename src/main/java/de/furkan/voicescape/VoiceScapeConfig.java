@@ -2,6 +2,8 @@ package de.furkan.voicescape;
 
 import net.runelite.client.config.*;
 
+import java.awt.*;
+
 @ConfigGroup("VoiceScape")
 public interface VoiceScapeConfig extends Config {
 
@@ -151,13 +153,33 @@ public interface VoiceScapeConfig extends Config {
   }
 
   @ConfigItem(
+      keyName = "indicatortype",
+      name = "Indicator Type",
+      description = "The type of the indicator",
+      section = indicatorSection,
+      position = 2)
+  default INDICATION_TYPE indicatorType() {
+    return INDICATION_TYPE.TILE;
+  }
+
+  @ConfigItem(
       keyName = "indicatorstring",
-      name = "Indicator",
+      name = "Indicator String",
       description = "The string that will be shown as the indicator",
       section = indicatorSection,
       position = 3)
   default String indicatorString() {
     return "Connected [%p]";
+  }
+
+  @ConfigItem(
+      keyName = "indicatorcolor",
+      name = "Indicator Color",
+      description = "The color of the indicator",
+      section = indicatorSection,
+      position = 4)
+  default Color indicatorColor() {
+    return Color.YELLOW;
   }
 
   @Range(min = 2, max = 30)
@@ -169,6 +191,12 @@ public interface VoiceScapeConfig extends Config {
       position = 2)
   default int indicatorDistance() {
     return 5;
+  }
+
+  enum INDICATION_TYPE {
+    STRING,
+    TILE,
+    BOTH
   }
 
   enum DEFAULT_SERVERS {

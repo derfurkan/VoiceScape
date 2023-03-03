@@ -6,7 +6,6 @@ import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
-import net.runelite.api.Player;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.client.config.ConfigManager;
@@ -16,6 +15,7 @@ import net.runelite.client.input.KeyManager;
 import net.runelite.client.menus.MenuManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.HotkeyListener;
 
 import javax.inject.Inject;
@@ -39,7 +39,6 @@ public class VoiceScapePlugin extends Plugin {
   public static ArrayList<String> registeredPlayers = Lists.newArrayList();
 
   public static ArrayList<String> mutedPlayers = Lists.newArrayList();
-  public static ArrayList<Player> indicatedPlayers = Lists.newArrayList();
   public static boolean canSpeak = false;
   private final HashMap<String, String> nameHashes = new HashMap<>();
   public MessageThread messageThread;
@@ -66,13 +65,18 @@ public class VoiceScapePlugin extends Plugin {
   @Inject private MenuManager menuManager;
   @Inject private KeyManager keyManager;
 
+  @Inject private OverlayManager overlayManager;
+
+  private VoiceScapeOverlay overlay;
+
   public static VoiceScapePlugin getInstance() {
     return VOICE_SCAPE_PLUGIN_INSTANCE;
   }
 
   @Override
   protected void startUp() throws Exception {
-
+    overlay = new VoiceScapeOverlay(client, config);
+    overlayManager.add(overlay);
     if (AudioSystem.getMixerInfo().length == 0) {
       JOptionPane.showMessageDialog(
           null,
@@ -100,8 +104,7 @@ public class VoiceScapePlugin extends Plugin {
                       isRunning = true;
                       if (client.getGameState() == GameState.LOGGED_IN) {
                         shutdownAll();
-                        if (config.useCustomServer())
-                          runPluginThreads(client,config);
+                        if (config.useCustomServer()) runPluginThreads(client, config);
                       }
                     });
               }
@@ -214,7 +217,7 @@ public class VoiceScapePlugin extends Plugin {
                         || gameStateChanged.getGameState() == GameState.HOPPING)
                     && (voiceEngine == null && messageThread == null)) {
                   if (config.useCustomServer()) {
-                    runPluginThreads(client,config);
+                    runPluginThreads(client, config);
                   }
                 } else if ((gameStateChanged.getGameState() != GameState.LOGGED_IN
                         && gameStateChanged.getGameState() != GameState.LOADING
@@ -229,12 +232,11 @@ public class VoiceScapePlugin extends Plugin {
 
   @Override
   protected void shutDown() throws Exception {
+    overlayManager.remove(overlay);
     menuManager.removePlayerMenuItem("Mute");
     menuManager.removePlayerMenuItem("Un-mute");
     isRunning = false;
     registeredPlayers.clear();
-    indicatedPlayers.forEach(player -> player.setOverheadText(""));
-    indicatedPlayers.clear();
     if (voiceEngine != null || messageThread != null) {
       shutdownAll();
     }
@@ -256,7 +258,7 @@ public class VoiceScapePlugin extends Plugin {
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
         if (option == JOptionPane.YES_OPTION) {
-          runPluginThreads(client,config);
+          runPluginThreads(client, config);
         }
       } else {
         shutdownAll();
@@ -267,6 +269,7 @@ public class VoiceScapePlugin extends Plugin {
         voiceReceiver.updateSettings();
       }
     } else if (configChanged.getKey().equals("defaultserver")) {
+      shutdownAll();
       if (config.defaultServers() != VoiceScapeConfig.DEFAULT_SERVERS.CUSTOM) {
         JOptionPane.showMessageDialog(
             null,
@@ -274,18 +277,9 @@ public class VoiceScapePlugin extends Plugin {
             "VoiceScape - Warning",
             JOptionPane.WARNING_MESSAGE);
       }
-      shutdownAll();
       if (config.useCustomServer()) {
-        runPluginThreads(client,config);
+        runPluginThreads(client, config);
       }
-    } else if (configChanged.getKey().equals("indicatorstring")) {
-      indicatedPlayers.forEach(
-          player -> {
-            if (player != null && player.getName() != null) {
-              player.setOverheadText("");
-              player.setOverheadText(config.indicatorString());
-            }
-          });
     } else if (configChanged.getKey().equals("muteself")) {
       if (voiceEngine != null) {
         if (config.muteSelf()) {
@@ -302,39 +296,31 @@ public class VoiceScapePlugin extends Plugin {
             "VoiceScape - Performance Mode",
             JOptionPane.WARNING_MESSAGE);
       }
-    } else if (configChanged.getKey().equals("showownindicator")) {
-      indicatedPlayers.forEach(
-          player -> {
-            if (player != null
-                && player.getName() != null
-                && player.getName().equals(client.getLocalPlayer().getName())) {
-              player.setOverheadText("");
-            }
-          });
     }
   }
 
   public void runPluginThreads(Client client, VoiceScapeConfig config) {
     new Thread(
             () -> {
-              if((client.getGameState() == GameState.LOGGED_IN
-                      || client.getGameState() == GameState.LOADING
-                      || client.getGameState() == GameState.HOPPING)) {
-              String ip = "127.0.0.1";
-              if (config.defaultServers() == VoiceScapeConfig.DEFAULT_SERVERS.CUSTOM) {
-                ip = config.customServerIP();
-              } else if (config.defaultServers() == VoiceScapeConfig.DEFAULT_SERVERS.VERAC_PRO) {
-                ip = "verac.pro";
-              }
-              messageThread = new MessageThread(ip, 23333, client, config, gson);
+              if ((client.getGameState() == GameState.LOGGED_IN
+                  || client.getGameState() == GameState.LOADING
+                  || client.getGameState() == GameState.HOPPING)) {
+                String ip = "127.0.0.1";
+                if (config.defaultServers() == VoiceScapeConfig.DEFAULT_SERVERS.CUSTOM) {
+                  ip = config.customServerIP();
+                } else if (config.defaultServers() == VoiceScapeConfig.DEFAULT_SERVERS.VERAC_PRO) {
+                  ip = "verac.pro";
+                }
+                messageThread = new MessageThread(ip, 23333, client, config, gson);
               } else {
-                SwingUtilities.invokeLater(() -> {
-                  JOptionPane.showMessageDialog(
+                SwingUtilities.invokeLater(
+                    () -> {
+                      JOptionPane.showMessageDialog(
                           null,
                           "You need to be logged in to connect to a server.",
                           "VoiceScape - Error",
                           JOptionPane.ERROR_MESSAGE);
-                });
+                    });
               }
             })
         .start();
@@ -344,8 +330,6 @@ public class VoiceScapePlugin extends Plugin {
     nameHashes.clear();
     isRunning = false;
     registeredPlayers.clear();
-    indicatedPlayers.forEach(player -> player.setOverheadText(""));
-    indicatedPlayers.clear();
     if (messageThread != null) {
       if (messageThread.out != null) messageThread.out.println("disconnect");
       messageThread.stop();
@@ -363,6 +347,7 @@ public class VoiceScapePlugin extends Plugin {
   }
 
   public String hashWithSha256(final String base) {
+    if (base == null) return "";
     if (nameHashes.containsKey(base)) return nameHashes.get(base);
     try {
       final MessageDigest digest = MessageDigest.getInstance("SHA-256");

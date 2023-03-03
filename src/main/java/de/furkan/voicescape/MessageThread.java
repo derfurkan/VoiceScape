@@ -11,7 +11,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.net.*;
+import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Timer;
@@ -45,7 +48,7 @@ public class MessageThread implements Runnable {
                 public void run() {
                   try {
                     DatagramSocket datagramSocket = new DatagramSocket(findRandomOpenPort());
-                    datagramSocket.connect(new InetSocketAddress(ip,24444));
+                    datagramSocket.connect(new InetSocketAddress(ip, 24444));
                     out.println(
                         "register:"
                             + VoiceScapePlugin.getInstance()
@@ -54,23 +57,26 @@ public class MessageThread implements Runnable {
                             + datagramSocket.getLocalPort());
                     VoiceScapePlugin.getInstance().voiceEngine =
                         new VoiceEngine(datagramSocket, config);
+                    VoiceScapePlugin.isRunning = true;
                   } catch (Exception e) {
-                      SwingUtilities.invokeLater(
-                              new Runnable() {
-                                  public void run() {
-                                      int option = JOptionPane.showConfirmDialog(
-                                              null,
-                                              "Could not connect to the server.\nDo you want to try again?",
-                                              "VoiceScape - Error",
-                                              JOptionPane.YES_NO_OPTION,
-                                              JOptionPane.ERROR_MESSAGE);
-                                      if(option == JOptionPane.YES_OPTION) {
-                                          VoiceScapePlugin.getInstance().runPluginThreads(client,config);
-                                      }
-                                  }
-                              });
-                      e.printStackTrace();
-                      thread.interrupt();
+                    SwingUtilities.invokeLater(
+                        new Runnable() {
+                          public void run() {
+                            int option =
+                                JOptionPane.showConfirmDialog(
+                                    null,
+                                    "Could not connect to the server.\nDo you want to try again?",
+                                    "VoiceScape - Error",
+                                    JOptionPane.YES_NO_OPTION,
+                                    JOptionPane.ERROR_MESSAGE);
+                            if (option == JOptionPane.YES_OPTION) {
+                              VoiceScapePlugin.getInstance().shutdownAll();
+                              VoiceScapePlugin.getInstance().runPluginThreads(client, config);
+                            }
+                          }
+                        });
+                    e.printStackTrace();
+                    thread.interrupt();
                   }
                 }
               },
@@ -80,14 +86,16 @@ public class MessageThread implements Runnable {
       SwingUtilities.invokeLater(
           new Runnable() {
             public void run() {
-              int option = JOptionPane.showConfirmDialog(
-                  null,
-                  "Could not connect to the server.\nDo you want to try again?",
-                  "VoiceScape - Error",
-                  JOptionPane.YES_NO_OPTION,
-                  JOptionPane.ERROR_MESSAGE);
-              if(option == JOptionPane.YES_OPTION) {
-                   VoiceScapePlugin.getInstance().runPluginThreads(client,config);
+              int option =
+                  JOptionPane.showConfirmDialog(
+                      null,
+                      "Could not connect to the server.\nDo you want to try again?",
+                      "VoiceScape - Error",
+                      JOptionPane.YES_NO_OPTION,
+                      JOptionPane.ERROR_MESSAGE);
+              if (option == JOptionPane.YES_OPTION) {
+                VoiceScapePlugin.getInstance().shutdownAll();
+                VoiceScapePlugin.getInstance().runPluginThreads(client, config);
               }
             }
           });
@@ -114,7 +122,6 @@ public class MessageThread implements Runnable {
                     new BufferedReader(new InputStreamReader(connection.getInputStream()));
                 String line;
                 while ((line = in.readLine()) != null && VoiceScapePlugin.isRunning) {
-                  System.out.println("Server: " + line);
                   if (line.startsWith("register ")) {
                     line = line.replace("register ", "");
                     ArrayList<String> registeredPlayers = new ArrayList<>();
@@ -153,7 +160,6 @@ public class MessageThread implements Runnable {
                 VoiceScapePlugin.getInstance().shutdownAll();
               } catch (Exception e) {
 
-                VoiceScapePlugin.indicatedPlayers.forEach(player -> player.setOverheadText(""));
                 if (VoiceScapePlugin.isRunning) {
                   SwingUtilities.invokeLater(
                       new Runnable() {
@@ -168,7 +174,8 @@ public class MessageThread implements Runnable {
                                   JOptionPane.ERROR_MESSAGE);
 
                           if (option == JOptionPane.YES_OPTION) {
-                            VoiceScapePlugin.getInstance().runPluginThreads(client,config);
+                            VoiceScapePlugin.getInstance().shutdownAll();
+                            VoiceScapePlugin.getInstance().runPluginThreads(client, config);
                           }
                         }
                       });
@@ -198,44 +205,6 @@ public class MessageThread implements Runnable {
                         .forEach(
                             player -> {
                               if (player == null || player.getName() == null) return;
-                              String indicatorText =
-                                  config.indicatorString().replaceAll("%p", player.getName());
-                              if (config.connectionIndicator()
-                                  && client
-                                          .getLocalPlayer()
-                                          .getWorldLocation()
-                                          .distanceTo(player.getWorldLocation())
-                                      <= config.indicatorDistance()
-                                  && (player.getOverheadText() == null
-                                      || player.getOverheadText().isEmpty())
-                                  && VoiceScapePlugin.registeredPlayers.contains(
-                                      VoiceScapePlugin.getInstance()
-                                          .hashWithSha256(player.getName()))) {
-
-                                if (player.getName().equals(client.getLocalPlayer().getName())
-                                    && !config.showOwnIndicator()) {
-                                  player.setOverheadText("");
-                                  VoiceScapePlugin.indicatedPlayers.remove(player);
-                                } else {
-                                  if (!VoiceScapePlugin.indicatedPlayers.contains(player)) {
-                                    VoiceScapePlugin.indicatedPlayers.add(player);
-                                  }
-                                  player.setOverheadText(indicatorText);
-                                }
-                              } else if (player.getOverheadText() != null
-                                  && player.getOverheadText().equals(indicatorText)
-                                  && (!config.connectionIndicator()
-                                      || client
-                                              .getLocalPlayer()
-                                              .getWorldLocation()
-                                              .distanceTo(player.getWorldLocation())
-                                          > config.indicatorDistance()
-                                      || !VoiceScapePlugin.registeredPlayers.contains(
-                                          VoiceScapePlugin.getInstance()
-                                              .hashWithSha256(player.getName())))) {
-                                player.setOverheadText("");
-                                VoiceScapePlugin.indicatedPlayers.remove(player);
-                              }
 
                               if (player.getName().equals(client.getLocalPlayer().getName()))
                                 return;
