@@ -24,7 +24,7 @@ public class VoiceScapeOverlay extends Overlay {
       for (Player player : client.getPlayers()) {
         if (player.getName() == null
             || client.getLocalPlayer().getLocalLocation().distanceTo(player.getLocalLocation())
-                < config.indicatorDistance()) {
+                > config.indicatorDistance()) {
           continue;
         }
         if (VoiceScapePlugin.registeredPlayers.contains(
