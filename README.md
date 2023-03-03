@@ -12,4 +12,4 @@ If you want to fight a Boss with your clan/friends use other VoIP's like Discord
 ## Here is the server that can be hosted by anyone: <br/> [VoiceScape-Server](https://github.com/derfurkan/VoiceScape-Server)
 ![alt text](https://i.ibb.co/bsYHxZ4/Screenshot-1.png)
 ![alt text](https://i.ibb.co/YPRGTgh/Screenshot-2.png)
-![alt text](https://i.ibb.co/yNspb7M/Screenshot-1.png)
+![alt text](https://i.ibb.co/89hzLsL/Screenshot-1.png)
