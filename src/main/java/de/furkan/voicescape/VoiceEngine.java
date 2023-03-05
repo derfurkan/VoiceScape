@@ -30,6 +30,7 @@ public class VoiceEngine implements Runnable {
       }
 
       microphone = (TargetDataLine) AudioSystem.getLine(info);
+      VoiceScapePlugin.overlay.currentLine = "Opening microphone";
       microphone.open(audioFormat);
       microphone.start();
       VoiceScapePlugin.getInstance().voiceReceiver =

@@ -202,6 +202,7 @@ public interface VoiceScapeConfig extends Config {
   enum DEFAULT_SERVERS {
     CUSTOM,
     VERAC,
-    THEBEERKEG
+    THEBEERKEG,
+    VOICE_NGA
   }
 }

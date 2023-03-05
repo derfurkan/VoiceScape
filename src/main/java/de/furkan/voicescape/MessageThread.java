@@ -38,6 +38,8 @@ public class MessageThread implements Runnable {
     this.thread = new Thread(this, "MessageThread");
     try {
       connection = new Socket();
+      VoiceScapePlugin.overlay.currentLine = "Connecting to Message Server";
+      // Connect to numeric IP
       connection.connect(new InetSocketAddress(ip, port), 5000);
       connection.setTcpNoDelay(true);
       out = new PrintWriter(connection.getOutputStream(), true);
@@ -48,16 +50,20 @@ public class MessageThread implements Runnable {
                 public void run() {
                   try {
                     DatagramSocket datagramSocket = new DatagramSocket(findRandomOpenPort());
+                    VoiceScapePlugin.overlay.currentLine = "Connecting to Voice Server";
                     datagramSocket.connect(new InetSocketAddress(ip, 24444));
+                    VoiceScapePlugin.overlay.currentLine = "Registering to Server";
                     out.println(
                         "register:"
                             + VoiceScapePlugin.getInstance()
                                 .hashWithSha256(client.getLocalPlayer().getName())
                             + "#"
                             + datagramSocket.getLocalPort());
+                    VoiceScapePlugin.overlay.currentLine = "Starting Voice Engine";
                     VoiceScapePlugin.getInstance().voiceEngine =
                         new VoiceEngine(datagramSocket, config);
                     VoiceScapePlugin.isRunning = true;
+                    VoiceScapePlugin.overlay.currentLine = "Waiting for update";
                   } catch (Exception e) {
                     SwingUtilities.invokeLater(
                         new Runnable() {
@@ -94,11 +100,11 @@ public class MessageThread implements Runnable {
                       JOptionPane.YES_NO_OPTION,
                       JOptionPane.ERROR_MESSAGE);
               if (option == JOptionPane.YES_OPTION) {
-                VoiceScapePlugin.getInstance().shutdownAll();
                 VoiceScapePlugin.getInstance().runPluginThreads(client, config);
               }
             }
           });
+      VoiceScapePlugin.getInstance().shutdownAll();
       e.printStackTrace();
       thread.interrupt();
     }
@@ -123,6 +129,9 @@ public class MessageThread implements Runnable {
                 String line;
                 while ((line = in.readLine()) != null && VoiceScapePlugin.isRunning) {
                   if (line.startsWith("register ")) {
+                    if (!VoiceScapePlugin.overlay.currentLine.equals("")) {
+                      VoiceScapePlugin.overlay.currentLine = "Updating Players";
+                    }
                     line = line.replace("register ", "");
                     ArrayList<String> registeredPlayers = new ArrayList<>();
                     registeredPlayers = gson.fromJson(line, registeredPlayers.getClass());
@@ -134,6 +143,9 @@ public class MessageThread implements Runnable {
                         });
 
                   } else if (line.startsWith("unregister ")) {
+                    if (VoiceScapePlugin.overlay.currentLine.equals("Updating Players")) {
+                      VoiceScapePlugin.overlay.currentLine = "";
+                    }
                     line = line.replace("unregister ", "");
                     ArrayList<String> unregisteredPlayers = new ArrayList<>();
                     unregisteredPlayers = gson.fromJson(line, unregisteredPlayers.getClass());

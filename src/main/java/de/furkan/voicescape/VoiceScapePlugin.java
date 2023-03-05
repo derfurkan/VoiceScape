@@ -40,6 +40,7 @@ public class VoiceScapePlugin extends Plugin {
 
   public static ArrayList<String> mutedPlayers = Lists.newArrayList();
   public static boolean canSpeak = false;
+  public static VoiceScapeOverlay overlay;
   private final HashMap<String, String> nameHashes = new HashMap<>();
   public MessageThread messageThread;
   public String microphoneName;
@@ -64,10 +65,7 @@ public class VoiceScapePlugin extends Plugin {
       };
   @Inject private MenuManager menuManager;
   @Inject private KeyManager keyManager;
-
   @Inject private OverlayManager overlayManager;
-
-  private VoiceScapeOverlay overlay;
 
   public static VoiceScapePlugin getInstance() {
     return VOICE_SCAPE_PLUGIN_INSTANCE;
@@ -312,6 +310,8 @@ public class VoiceScapePlugin extends Plugin {
                   ip = "verac.pro";
                 } else if (config.defaultServers() == VoiceScapeConfig.DEFAULT_SERVERS.THEBEERKEG) {
                   ip = "thebeerkeg.net";
+                } else if (config.defaultServers() == VoiceScapeConfig.DEFAULT_SERVERS.VOICE_NGA) {
+                  ip = "voicescape.nga.gg";
                 }
                 messageThread = new MessageThread(ip, 23333, client, config, gson);
               } else {
@@ -329,6 +329,7 @@ public class VoiceScapePlugin extends Plugin {
   }
 
   public void shutdownAll() {
+    overlay.currentLine = "";
     nameHashes.clear();
     isRunning = false;
     registeredPlayers.clear();
