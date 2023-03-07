@@ -14,4 +14,4 @@ If you want to fight a Boss with your clan/friends use other VoIP's like Discord
 <br/>
 ![alt text](https://i.ibb.co/YPRGTgh/Screenshot-2.png)
 <br/>
-![alt text](https://i.ibb.co/yk38HVp/Screenshot-1.png)
+![alt text](https://i.ibb.co/7Wsk2tY/Screenshot-1.png)
