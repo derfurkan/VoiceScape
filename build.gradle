@@ -21,7 +21,6 @@ dependencies {
 	testImplementation 'junit:junit:4.12'
 	testImplementation group: 'net.runelite', name:'client', version: runeLiteVersion
 	testImplementation group: 'net.runelite', name:'jshell', version: runeLiteVersion
-	implementation group: 'org.jitsi', name: 'jsocks', version: '1.0.1-jitsi-1'
 }
 
 group = 'com.example'
