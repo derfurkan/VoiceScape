@@ -9,6 +9,7 @@ import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Player;
 
+import javax.inject.Inject;
 import javax.swing.*;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -24,7 +25,10 @@ public class MessageThread implements Runnable {
 
     private final Client client;
     private final VoiceScapeConfig config;
-    private final Gson gson;
+
+    @Inject
+    private Gson gson;
+
     public PrintWriter out;
     ArrayList<String> lastUpdate = Lists.newArrayList();
     Thread thread1;
@@ -33,7 +37,9 @@ public class MessageThread implements Runnable {
 
     public MessageThread(
             String ip, int port, Client client, VoiceScapeConfig config, Gson gsonInstance) {
-        this.gson = gsonInstance;
+        if(gsonInstance != null) {
+            this.gson = gsonInstance;
+        }
         this.config = config;
         this.client = client;
         this.thread = new Thread(this, "MessageThread");

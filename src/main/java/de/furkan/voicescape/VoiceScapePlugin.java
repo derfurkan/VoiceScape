@@ -362,9 +362,6 @@ public class VoiceScapePlugin extends Plugin {
                         } else if (config.defaultServers() == VoiceScapeConfig.DEFAULT_SERVERS.VOICE_NGA) {
                             ip = "voicescape.nga.gg";
                         }
-                        if (gson == null) {
-                            gson = new Gson();
-                        }
                         messageThread = new MessageThread(ip, 23333, client, config, gson);
                     } else {
                         SwingUtilities.invokeLater(
