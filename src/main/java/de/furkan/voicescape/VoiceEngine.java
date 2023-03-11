@@ -22,13 +22,13 @@ public class VoiceEngine implements Runnable {
 
         try {
             this.thread = new Thread(this, "VoiceEngine");
-            AudioFormat audioFormat = new AudioFormat(44100, 16, 1, true, true);
+            AudioFormat audioFormat = new AudioFormat(44100, 16, 1, true, false);
             DataLine.Info info = new DataLine.Info(TargetDataLine.class, audioFormat);
 
             Mixer.Info[] mixerInfo = AudioSystem.getMixerInfo();
             for (Mixer.Info info1 : mixerInfo) {
                 Mixer mixer = AudioSystem.getMixer(info1);
-                if (mixer.getMixerInfo().getName().equals(VoiceScapePlugin.getInstance().microphoneName)) {
+                if (VoiceScapePlugin.getInstance().microphoneName != null && mixer.getMixerInfo().getName().startsWith(VoiceScapePlugin.getInstance().microphoneName)) {
                     info = (DataLine.Info) mixer.getLine(info);
                     break;
                 }
@@ -42,6 +42,8 @@ public class VoiceEngine implements Runnable {
                     new VoiceReceiverThread(connection, voiceScapeConfig);
             this.thread.start();
         } catch (LineUnavailableException e) {
+            e.printStackTrace();
+            VoiceScapePlugin.getInstance().shutdownAll("Could not open microphone. Please check your microphone.");
             SwingUtilities.invokeLater(
                     new Runnable() {
                         public void run() {
@@ -52,10 +54,9 @@ public class VoiceEngine implements Runnable {
                                     JOptionPane.ERROR_MESSAGE);
                         }
                     });
-            VoiceScapePlugin.getInstance().shutdownAll();
         } catch (Exception e) {
             e.printStackTrace();
-            VoiceScapePlugin.getInstance().shutdownAll();
+            VoiceScapePlugin.getInstance().shutdownAll(e.getMessage());
             thread.interrupt();
         }
     }
@@ -74,7 +75,7 @@ public class VoiceEngine implements Runnable {
                                         JOptionPane.ERROR_MESSAGE);
 
                         if (option == JOptionPane.YES_OPTION) {
-                            VoiceScapePlugin.getInstance().shutdownAll();
+                            VoiceScapePlugin.getInstance().shutdownAll("Reconnecting");
                             VoiceScapePlugin.getInstance().runPluginThreads(client, voiceScapeConfig);
                         }
                     }
@@ -93,14 +94,24 @@ public class VoiceEngine implements Runnable {
                         && !voiceScapeConfig.muteSelf()
                         && VoiceScapePlugin.getInstance().sendMicrophoneData) {
                     if (voiceScapeConfig.pushToTalk() && !VoiceScapePlugin.canSpeak) {
+                        VoiceScapePlugin.isTalking = false;
                         continue;
                     }
+                    String uuid = VoiceScapePlugin.uuidString + "" + System.currentTimeMillis();
 
-                    byte[] uuidBytes = VoiceScapePlugin.uuidString.getBytes();
+                    byte[] uuidBytes = uuid.getBytes();
                     byte[] newSoundData = new byte[soundData.length + uuidBytes.length];
                     System.arraycopy(uuidBytes, 0, newSoundData, 0, uuidBytes.length);
                     System.arraycopy(soundData, 0, newSoundData, uuidBytes.length, soundData.length);
                     soundData = newSoundData;
+
+
+                    if (soundData.length > 65507) {
+                        byte[] newSoundData2 = new byte[65507];
+                        System.arraycopy(soundData, 0, newSoundData2, 0, 65507);
+                        soundData = newSoundData2;
+                    }
+
 
                     DatagramPacket packet = new DatagramPacket(soundData, soundData.length, new InetSocketAddress(voiceScapeConfig.customServerIP(), 24444));
                     if (voiceScapeConfig.useProxy()) {
@@ -108,14 +119,17 @@ public class VoiceEngine implements Runnable {
                     } else {
                         connection.socket.send(packet);
                     }
+                    VoiceScapePlugin.isTalking = true;
+                } else {
+                    VoiceScapePlugin.isTalking = false;
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
-            if (e.getMessage().startsWith("Socket")) {
+            if (e.getMessage().startsWith("Socket") && VoiceScapePlugin.isRunning) {
                 connectionLostMessage(client, voiceScapeConfig);
             }
-            VoiceScapePlugin.getInstance().shutdownAll();
+            VoiceScapePlugin.getInstance().shutdownAll(e.getMessage());
         }
     }
 

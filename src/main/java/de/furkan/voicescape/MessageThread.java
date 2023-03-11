@@ -15,7 +15,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.*;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -28,7 +27,9 @@ public class MessageThread implements Runnable {
     private final Gson gson;
     public PrintWriter out;
     ArrayList<String> lastUpdate = Lists.newArrayList();
+    Thread thread1;
     private Socket connection;
+    private Socks5DatagramSocket datagramSocket;
 
     public MessageThread(
             String ip, int port, Client client, VoiceScapeConfig config, Gson gsonInstance) {
@@ -38,7 +39,7 @@ public class MessageThread implements Runnable {
         this.thread = new Thread(this, "MessageThread");
         try {
             VoiceScapePlugin.overlay.currentLine = "Connecting to Message Server";
-            // Connect to numeric IP
+
             if (config.useProxy() && config.proxyIPAndPort().contains(":")) {
                 Authenticator.setDefault(getAuth(config.proxyUsername(), config.proxyPassword()));
                 SocketAddress addr =
@@ -51,9 +52,11 @@ public class MessageThread implements Runnable {
                 connection = new Socket();
             }
 
-            connection.connect(new InetSocketAddress(ip, port), 5000);
+            connection.connect(new InetSocketAddress(ip, port), 10000);
+            connection.setTcpNoDelay(true);
+            connection.setKeepAlive(true);
             if (connection.isConnected()) {
-                connection.setTcpNoDelay(true);
+
                 out = new PrintWriter(connection.getOutputStream(), true);
                 new Timer()
                         .schedule(
@@ -72,7 +75,7 @@ public class MessageThread implements Runnable {
                                                                 proxyHost + ":" + proxyPort + ":" + proxyUser + ":" + proxyPass);
                                                 SocksProxyBase.setDefaultProxy(socksProxyBase);
                                             }
-                                            Socks5DatagramSocket datagramSocket = new Socks5DatagramSocket();
+                                            datagramSocket = new Socks5DatagramSocket();
 
                                             VoiceScapePlugin.overlay.currentLine = "Registering to Server";
                                             out.println(
@@ -81,13 +84,13 @@ public class MessageThread implements Runnable {
                                                             .hashWithSha256(client.getLocalPlayer().getName())
                                                             + "#"
                                                             + VoiceScapePlugin.uuidString);
+
                                             VoiceScapePlugin.overlay.currentLine = "Starting Voice Engine";
                                             VoiceScapePlugin.getInstance().voiceEngine =
                                                     new VoiceEngine(datagramSocket, config, client);
-                                            VoiceScapePlugin.isRunning = true;
                                             VoiceScapePlugin.overlay.currentLine = "Waiting for update";
                                         } catch (SocksException socksException) {
-                                            VoiceScapePlugin.getInstance().shutdownAll();
+                                            VoiceScapePlugin.getInstance().shutdownAll(socksException.getMessage());
                                             socksException.lookupErrorString(socksException.getErrorCode());
                                             SwingUtilities.invokeLater(
                                                     new Runnable() {
@@ -112,7 +115,7 @@ public class MessageThread implements Runnable {
                                             socksException.printStackTrace();
                                             thread.interrupt();
                                         } catch (Exception e) {
-                                            VoiceScapePlugin.getInstance().shutdownAll();
+                                            VoiceScapePlugin.getInstance().shutdownAll(e.getMessage());
                                             SwingUtilities.invokeLater(
                                                     new Runnable() {
                                                         public void run() {
@@ -137,19 +140,34 @@ public class MessageThread implements Runnable {
             }
             this.thread.start();
         } catch (Exception e) {
-            VoiceScapePlugin.getInstance().shutdownAll();
+            VoiceScapePlugin.getInstance().shutdownAll(e.getMessage());
             SwingUtilities.invokeLater(
                     new Runnable() {
                         public void run() {
-                            int option =
-                                    JOptionPane.showConfirmDialog(
-                                            null,
-                                            "Could not connect to the server.\nDo you want to try again?",
-                                            "VoiceScape - Error",
-                                            JOptionPane.YES_NO_OPTION,
-                                            JOptionPane.ERROR_MESSAGE);
-                            if (option == JOptionPane.YES_OPTION) {
-                                VoiceScapePlugin.getInstance().runPluginThreads(client, config);
+                            if (e.getMessage().contains("SOCKS")) {
+                                int option =
+                                        JOptionPane.showConfirmDialog(
+                                                null,
+                                                "There was an error with the proxy.\nBe sure that the proxyType is SOCKS5 and it can process voice packets.\n\nError: "
+                                                        + e.getMessage()
+                                                        + "\n\nDo you want to try again?",
+                                                "VoiceScape - Error",
+                                                JOptionPane.YES_NO_OPTION,
+                                                JOptionPane.ERROR_MESSAGE);
+                                if (option == JOptionPane.YES_OPTION) {
+                                    VoiceScapePlugin.getInstance().runPluginThreads(client, config);
+                                }
+                            } else {
+                                int option =
+                                        JOptionPane.showConfirmDialog(
+                                                null,
+                                                "Could not connect to the server.\nDo you want to try again?",
+                                                "VoiceScape - Error",
+                                                JOptionPane.YES_NO_OPTION,
+                                                JOptionPane.ERROR_MESSAGE);
+                                if (option == JOptionPane.YES_OPTION) {
+                                    VoiceScapePlugin.getInstance().runPluginThreads(client, config);
+                                }
                             }
                         }
                     });
@@ -159,17 +177,9 @@ public class MessageThread implements Runnable {
         }
     }
 
-    private int findRandomOpenPort() {
-        try (ServerSocket socket = new ServerSocket(new SecureRandom().nextInt(65535))) {
-            return socket.getLocalPort();
-        } catch (IOException e) {
-            return findRandomOpenPort();
-        }
-    }
-
     @Override
     public void run() {
-        Thread thread1 =
+        thread1 =
                 new Thread(
                         () -> {
                             try {
@@ -177,7 +187,9 @@ public class MessageThread implements Runnable {
                                         new BufferedReader(new InputStreamReader(connection.getInputStream()));
                                 String line;
                                 while ((line = in.readLine()) != null && VoiceScapePlugin.isRunning) {
+
                                     if (line.startsWith("register ")) {
+                                        VoiceScapePlugin.lastUpdateMessage = System.currentTimeMillis();
                                         if (!VoiceScapePlugin.overlay.currentLine.equals("")) {
                                             VoiceScapePlugin.overlay.currentLine = "Updating Players";
                                         }
@@ -196,13 +208,14 @@ public class MessageThread implements Runnable {
                                             VoiceScapePlugin.overlay.currentLine = "";
                                         }
                                         line = line.replace("unregister ", "");
-                                        ArrayList<String> unregisteredPlayers = new ArrayList<>();
+                                        ArrayList<Object> unregisteredPlayers = new ArrayList<>();
                                         unregisteredPlayers = gson.fromJson(line, unregisteredPlayers.getClass());
                                         unregisteredPlayers.forEach(s -> VoiceScapePlugin.registeredPlayers.remove(s));
                                     } else {
                                         String finalLine = line;
                                         SwingUtilities.invokeLater(
                                                 () -> {
+                                                    VoiceScapePlugin.getInstance().shutdownAll("Invalid Message");
                                                     JOptionPane.showConfirmDialog(
                                                             null,
                                                             "The Server has sent an invalid message. For security reasons you have been disconnected.\nInvalid server messages indicate that the server might be modified.\nPlease contact the server owner to fix this issue\n\nMessage\n"
@@ -211,20 +224,20 @@ public class MessageThread implements Runnable {
                                                             JOptionPane.DEFAULT_OPTION,
                                                             JOptionPane.ERROR_MESSAGE);
                                                 });
-                                        try {
-                                            VoiceScapePlugin.getInstance().shutdownAll();
-                                        } catch (Exception ex) {
-                                            throw new RuntimeException(ex);
-                                        }
                                     }
                                 }
-                                VoiceScapePlugin.getInstance().shutdownAll();
-                            } catch (Exception e) {
 
-                                if (VoiceScapePlugin.isRunning) {
+                                if (!VoiceScapePlugin.alreadyShutDown) {
                                     VoiceEngine.connectionLostMessage(client, config);
                                 }
-                                VoiceScapePlugin.getInstance().shutdownAll();
+                                VoiceScapePlugin.getInstance().shutdownAll("Connection to server lost");
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                if (VoiceScapePlugin.isRunning && !config.useProxy()) {
+                                    VoiceScapePlugin.getInstance().shutdownAll(e.getMessage());
+                                    VoiceEngine.connectionLostMessage(client, config);
+                                }
+
                             }
                         });
 
@@ -315,6 +328,8 @@ public class MessageThread implements Runnable {
             if (connection != null) connection.close();
             if (out != null) out.close();
             thread.interrupt();
+            if (thread1 != null)
+                thread1.interrupt();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

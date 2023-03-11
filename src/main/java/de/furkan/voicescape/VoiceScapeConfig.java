@@ -25,6 +25,13 @@ public interface VoiceScapeConfig extends Config {
     String performanceSection = "performance";
 
     @ConfigSection(
+            name = "Debug",
+            description = "Debug settings",
+            position = 4,
+            closedByDefault = true)
+    String debugSection = "debug";
+
+    @ConfigSection(
             name = "Server",
             description = "Server settings",
             position = 0,
@@ -201,11 +208,21 @@ public interface VoiceScapeConfig extends Config {
     }
 
     @ConfigItem(
+            keyName = "showmuteindicator",
+            name = "Show mute indicator",
+            description = "Show the mute indicator",
+            section = indicatorSection,
+            position = 2)
+    default boolean showMuteIndicator() {
+        return true;
+    }
+
+    @ConfigItem(
             keyName = "indicatortype",
             name = "Indicator Type",
             description = "The type of the indicator",
             section = indicatorSection,
-            position = 2)
+            position = 3)
     default INDICATION_TYPE indicatorType() {
         return INDICATION_TYPE.TILE;
     }
@@ -215,7 +232,7 @@ public interface VoiceScapeConfig extends Config {
             name = "Indicator String",
             description = "The string that will be shown as the indicator",
             section = indicatorSection,
-            position = 3)
+            position = 5)
     default String indicatorString() {
         return "Connected [%p]";
     }
@@ -225,7 +242,7 @@ public interface VoiceScapeConfig extends Config {
             name = "Indicator Color",
             description = "The color of the indicator",
             section = indicatorSection,
-            position = 4)
+            position = 6)
     default Color indicatorColor() {
         return Color.YELLOW;
     }
@@ -236,9 +253,19 @@ public interface VoiceScapeConfig extends Config {
             name = "Indicator Distance",
             description = "Minimum distance to show the indicator",
             section = indicatorSection,
-            position = 2)
+            position = 4)
     default int indicatorDistance() {
         return 5;
+    }
+
+    @ConfigItem(
+            keyName = "showdebug",
+            name = "Show Debug Info",
+            description = "Shows a panel with debug info",
+            section = debugSection,
+            position = 0)
+    default boolean showDebugInfo() {
+        return false;
     }
 
     enum INDICATION_TYPE {

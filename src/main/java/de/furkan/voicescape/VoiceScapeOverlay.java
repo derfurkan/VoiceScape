@@ -4,6 +4,8 @@ import net.runelite.api.Client;
 import net.runelite.api.Player;
 import net.runelite.api.Point;
 import net.runelite.client.ui.overlay.Overlay;
+import net.runelite.client.ui.overlay.OverlayPosition;
+import net.runelite.client.ui.overlay.OverlayPriority;
 import net.runelite.client.ui.overlay.OverlayUtil;
 
 import java.awt.*;
@@ -17,6 +19,8 @@ public class VoiceScapeOverlay extends Overlay {
     public VoiceScapeOverlay(Client client, VoiceScapeConfig config) {
         this.client = client;
         this.config = config;
+        setPosition(OverlayPosition.DYNAMIC);
+        setPriority(OverlayPriority.MED);
     }
 
     @Override
@@ -30,6 +34,19 @@ public class VoiceScapeOverlay extends Overlay {
                 }
                 if (VoiceScapePlugin.registeredPlayers.contains(
                         VoiceScapePlugin.getInstance().hashWithSha256(player.getName()))) {
+                    if (VoiceScapePlugin.mutedPlayers.contains(VoiceScapePlugin.getInstance().hashWithSha256(player.getName())) && config.showMuteIndicator()) {
+                        String a = "Muted " + player.getName();
+                        int stringLength = graphics.getFontMetrics().stringWidth(a) - 40;
+                        Point textLocation =
+                                player
+                                        .getCanvasTextLocation(
+                                                graphics,
+                                                player.getName(),
+                                                player.getLogicalHeight() + 50);
+                        if (textLocation == null) return null;
+                        textLocation = new Point(textLocation.getX() - stringLength / 2, textLocation.getY());
+                        OverlayUtil.renderTextLocation(graphics, textLocation, a, config.indicatorColor());
+                    }
                     if (player.getName().equals(client.getLocalPlayer().getName())
                             && !config.showOwnIndicator()) {
                         continue;
@@ -52,7 +69,7 @@ public class VoiceScapeOverlay extends Overlay {
                             .getCanvasTextLocation(
                                     graphics,
                                     client.getLocalPlayer().getName(),
-                                    client.getLocalPlayer().getLogicalHeight() + 60);
+                                    client.getLocalPlayer().getLogicalHeight() + 20);
             if (textLocation == null) return null;
             textLocation = new Point(textLocation.getX() - stringLength / 2, textLocation.getY());
             OverlayUtil.renderTextLocation(graphics, textLocation, currentLine, Color.YELLOW);
@@ -63,7 +80,7 @@ public class VoiceScapeOverlay extends Overlay {
 
     private void renderString(Graphics2D graphics, Player player) {
         Point textLocation =
-                player.getCanvasTextLocation(graphics, player.getName(), player.getLogicalHeight() + 60);
+                player.getCanvasTextLocation(graphics, player.getName(), player.getLogicalHeight() + 20);
         if (textLocation != null) {
             String indicatorText = config.indicatorString();
             indicatorText = indicatorText.replace("%p", player.getName());

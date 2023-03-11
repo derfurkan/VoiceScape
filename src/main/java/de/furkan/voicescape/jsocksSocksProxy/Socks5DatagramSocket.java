@@ -111,7 +111,7 @@ public class Socks5DatagramSocket extends DatagramSocket {
             final ProxyMessage msg = proxy.udpAssociate(super.getLocalAddress(), super.getLocalPort());
 
             relayIP = msg.ip;
-            if (relayIP.getHostAddress().equals("0.0.0.0")) {
+            if (relayIP == null || relayIP.getHostAddress().equals("0.0.0.0")) {
                 // FIXME: What happens here?
                 relayIP = proxy.proxyIP;
             }
