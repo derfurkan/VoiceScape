@@ -6,11 +6,9 @@ VoiceScape is not a alternative to discord or other VoIP applications.
 Its a fun plugin where you run random into players and can talk with them if you are woodcutting or banking etc.
 If you want to fight a Boss with your clan/friends use other VoIP's like Discord instead.
 <br/>
-<br/>
 # Will this leak my IP address?
 ### VoiceScape will not leak your IP address in any way and its not designed to do so.
 The only one who can see your IP address is the one who owns the Server that you might will connect to.
-<br/>
 <br/>
 # How can i hide my IP address?
 One option to hide your IP address from the server is to tunnel it through a [Proxy](https://www.fortinet.com/resources/cyberglossary/proxy-server) or [VPN](https://nordvpn.com/de/what-is-a-vpn/).<br/>
