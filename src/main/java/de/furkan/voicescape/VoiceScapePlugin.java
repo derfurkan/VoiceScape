@@ -265,6 +265,7 @@ public class VoiceScapePlugin extends Plugin {
         overlayManager.remove(overlayDebug);
         menuManager.removePlayerMenuItem("Mute");
         menuManager.removePlayerMenuItem("Un-mute");
+        keyManager.unregisterKeyListener(hotkeyListener);
         isRunning = false;
         registeredPlayers.clear();
         if (voiceEngine != null || messageThread != null) {

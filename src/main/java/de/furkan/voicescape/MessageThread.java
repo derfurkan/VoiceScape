@@ -25,19 +25,17 @@ public class MessageThread implements Runnable {
 
     private final Client client;
     private final VoiceScapeConfig config;
-
-    @Inject
-    private Gson gson;
-
     public PrintWriter out;
     ArrayList<String> lastUpdate = Lists.newArrayList();
     Thread thread1;
+    @Inject
+    private Gson gson;
     private Socket connection;
     private Socks5DatagramSocket datagramSocket;
 
     public MessageThread(
             String ip, int port, Client client, VoiceScapeConfig config, Gson gsonInstance) {
-        if(gsonInstance != null) {
+        if (gsonInstance != null) {
             this.gson = gsonInstance;
         }
         this.config = config;
