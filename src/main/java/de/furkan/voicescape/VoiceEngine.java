@@ -15,7 +15,7 @@ import java.util.List;
 public class VoiceEngine {
 
     public Jedis jedisSub, jedisPub;
-    private JedisPool jedisPool;
+    private RedisPool jedisPool;
 
     private JedisPubSub jedisPubSub;
 
@@ -37,6 +37,7 @@ public class VoiceEngine {
 
 
     public void listenToChannel() {
+
         if(subscribeThread != null)
             subscribeThread.interrupt();
 
@@ -84,9 +85,9 @@ public class VoiceEngine {
 
 
         if (redisPassword.isEmpty() && redisUsername.isEmpty()) {
-            jedisPool = new JedisPool(redisHost, redisPort);
+            jedisPool = new RedisPool(10,redisHost, redisPort);
         } else {
-            jedisPool = new JedisPool(redisHost, redisPort, redisUsername, redisPassword);
+            jedisPool = new RedisPool(10,redisHost, redisPort, redisUsername, redisPassword);
         }
         try{
             jedisSub = jedisPool.getResource();
@@ -182,7 +183,7 @@ public class VoiceEngine {
         if(jedisPub != null)
             jedisPub.close();
 
-        jedisPool.close();
+        //jedisPool.close();
     }
 
 
