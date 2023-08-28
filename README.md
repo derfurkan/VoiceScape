@@ -1,37 +1,19 @@
 # VoiceScape
-VoiceScape is a plugin that connects the RuneLite client to a voice server, allowing you to communicate with other players who are also using the plugin in-game. This voice chat is distance-based, so if you're not close to other players who have the plugin, the server won't send you their voice data. Latency is 500ms to 1 Second high.
+VoiceScape is a plugin that connects the RuneLite client to a server, allowing you to communicate with other players who are also using the plugin in-game. This voice chat is distance-based, so if you're not close to other players who have the plugin, the server won't send you their voice data. Latency is 500ms to 1 Second high.
 
 # What is it NOT
 VoiceScape is not a alternative to discord or other VoIP applications.
 Its a fun plugin where you run random into players and can talk with them if you are woodcutting or banking etc.
-If you want to fight a Boss with your clan/friends use other VoIP's like Discord instead.
+If you want to fight a Boss with your clan/friends use other VoIP's like Discord or Teamspeak instead.
 <br/>
 # Will this leak my IP address?
 ### VoiceScape will not leak your IP address in any way and its not designed to do so.
 The only one who can see your IP address is the one who owns the Server that you might will connect to.
 <br/>
 # How can i hide my IP address?
-One option to hide your IP address from the server is to tunnel it through a [Proxy](https://www.fortinet.com/resources/cyberglossary/proxy-server) or [VPN](https://nordvpn.com/de/what-is-a-vpn/).<br/>
-VoiceScape has a built in Proxy function that works ONLY with [Socks5](https://www.ipvanish.com/socks5-proxy/) Proxies.<br/>
-Some proxy servers do not work with VoiceScape due to restrictions.<br/>
-The Username and Password field are optional and only needed if the Proxy needs authentication.
-<br/>
-<br/>
+To hide your IP address from the server you can tunnel it through a [Proxy](https://www.fortinet.com/resources/cyberglossary/proxy-server) or [VPN](https://nordvpn.com/de/what-is-a-vpn/).<br/>
 
 # How can i host a server?
-### [VoiceScape-Server](https://github.com/derfurkan/VoiceScape-Server) is the open source server software used to created VoiceScape servers.
-# Images
-![alt text](https://i.ibb.co/m8HcSqJ/Screenshot-4.png) 
-<br/>
-![alt text](https://i.ibb.co/YPRGTgh/Screenshot-2.png) 
-<br/>
-![alt text](https://i.ibb.co/bsYHxZ4/Screenshot-1.png)
-<br/>
-<br/>
-# Disclaimer
-By using this in-game voice chat plugin to connect to servers hosted by other players, you acknowledge that while the plugin takes measures to hide your name and IP address(if using a proxy), it is still not entirely safe to join a server run by someone you do not know. There is a possibility that the server might be modified may exploit a security vulnerability in the plugin, even if the chance of this happening is very very low.
-
-Please be aware that while the server cannot force the client to send audio packets, they can be recorded if the client does send them. Additionally, the client is protected by a safeguard that will immediately terminate the connection if the server sends unsolicited messages.
-
-Therefore, by using this plugin to connect to a server, you do so at your own risk, and the plugin's developers and affiliates cannot be held responsible for any damages or loss of data that may occur.
-
+To easily host a server you can use cloud providers like [Redis Cloud](https://redis.com/redis-enterprise-cloud/overview/) which offers a free Redis database.<br/><br/>
+Otherwise you can host your own Redis server on your local achine using this tutorial for Windows: 
+https://cloudinfrastructureservices.co.uk/how-to-install-redis-on-windows-10-11-step-by-step-tutorial/<br/>
