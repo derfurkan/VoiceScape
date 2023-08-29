@@ -46,6 +46,8 @@ public class VoiceScapePlugin extends Plugin {
 
     public boolean canSpeak = false;
 
+    public boolean droppingPacket = true;
+
     private final HotkeyListener hotkeyListener =
             new HotkeyListener(() -> this.config.pushToTalkBind()) {
                 @Override
@@ -64,6 +66,8 @@ public class VoiceScapePlugin extends Plugin {
                 }
             };
     public VoiceScapeOverlay voiceScapeOverlay;
+
+    public VoiceScapeNetworkOverlay voiceScapeNetworkOverlay;
     public VoiceEngine voiceEngine;
 
     public List<String> registeredPlayers = new ArrayList<>();
@@ -88,18 +92,22 @@ public class VoiceScapePlugin extends Plugin {
         voiceEngine.openConnection();
         keyManager.registerKeyListener(hotkeyListener);
         overlayManager.add(voiceScapeOverlay = new VoiceScapeOverlay(this));
+        overlayManager.add(voiceScapeNetworkOverlay = new VoiceScapeNetworkOverlay(this));
         System.out.println("VoiceScape plugin initialized");
     }
 
     private void shutdownPlugin() {
         keyManager.unregisterKeyListener(hotkeyListener);
         overlayManager.remove(voiceScapeOverlay);
+        overlayManager.remove(voiceScapeNetworkOverlay);
         if(voiceEngine != null) {
             voiceEngine.close();
             voiceEngine = null;
         }
         registeredPlayers.clear();
         isLoggedIn = false;
+        pingInMs = 0;
+        droppingPacket = false;
     }
 
     @Subscribe
@@ -160,14 +168,24 @@ public class VoiceScapePlugin extends Plugin {
         }
     }
 
+    private long lastPacketReceived = 0;
+    public long pingInMs = 0;
+
     public void onRawMessageReceived(String message) {
         //Using try catch to prevent plugin from crashing
-      // System.out.println("Received packet with size " + message.length() + " bytes | " + message.length() / 1024 + " kb");
+       //System.out.println("Received packet with size " + message.length() + " bytes | " + message.length() / 1024 + " kb");
+       if(lastPacketReceived != 0)
+           pingInMs = System.currentTimeMillis() - lastPacketReceived;
+       lastPacketReceived = System.currentTimeMillis();
         try {
             if (message.startsWith("delete#")) {
+                if(message.split("#")[1].equals(client.getLocalPlayer().getName()))
+                    return;
                 registeredPlayers.remove(message.split("#")[1]);
                 return;
             } else if (message.startsWith("register#")) {
+                if(message.split("#")[1].equals(client.getLocalPlayer().getName()))
+                    return;
                 registeredPlayers.add(message.split("#")[1]);
                 return;
             }
@@ -199,12 +217,17 @@ public class VoiceScapePlugin extends Plugin {
 
 
             if (isInSurroundingArea) {
+                if(System.currentTimeMillis() - voicePacket.timeCreated > config.maxPacketAge()) {
+                    droppingPacket = true;
+                    return;
+                }
+                droppingPacket = false;
                 //Calculate volume based on distance
                 int distanceToSender = client.getLocalPlayer().getWorldLocation().distanceTo(sender.getWorldLocation());
                 float volume = 1 - ((float) distanceToSender / config.minDistance());
-
-                if(!config.altPlay())
+                if(!config.altPlay()) {
                     voiceEngine.audioDataList.put(voicePacket.audioData,volume);
+                }
                 else
                     voiceEngine.playAudio(voicePacket.audioData, volume);
             }

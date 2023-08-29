@@ -24,6 +24,13 @@ public interface VoiceScapeConfig extends Config {
             closedByDefault = true)
     String serverSection = "Server";
 
+    @ConfigSection(
+            name = "Advanced",
+            description = "Advanced settings",
+            position = 3,
+            closedByDefault = true)
+    String advancedSection = "Advanced";
+
     @ConfigItem(
             keyName = "muteself",
             name = "Mute Self",
@@ -94,15 +101,7 @@ public interface VoiceScapeConfig extends Config {
     default SERVER_TYPE serverType() {
         return SERVER_TYPE.DEFAULT;
     }
-    @ConfigItem(
-            keyName = "altplay",
-            name = "Alternative Playback",
-            description = "This playback method will cause cuts in the audio but may fix some issues with different audio devices and latency",
-            section = voiceSection,
-            position = 7)
-    default boolean altPlay() {
-        return false;
-    }
+
 
     @ConfigItem(keyName = " ", name = " ", description = " ", section = serverSection, position = 4)
     default Long spacer() {
@@ -204,6 +203,38 @@ public interface VoiceScapeConfig extends Config {
             position = 4)
     default int indicatorDistance() {
         return 5;
+    }
+
+    @ConfigItem(
+            keyName = "altplay",
+            name = "Alternative Playback",
+            description = "This playback method will cause cuts in the audio but may fix some issues with different audio devices and latency",
+            section = advancedSection,
+            position = 0)
+    default boolean altPlay() {
+        return false;
+    }
+
+    @Range(min = 1500, max = 10000)
+    @Units(Units.MILLISECONDS)
+    @ConfigItem(
+            keyName = "packetage",
+            name = "Max packet age",
+            description = "The value in milliseconds a voice packet can be old before it gets dropped on receive. A lower value reduces latency but can drop every voice packet if you have a high ping.",
+            section = advancedSection,
+            position = 1)
+    default int maxPacketAge() {
+        return 2000;
+    }
+
+    @ConfigItem(
+            keyName = "shownetworkovleray",
+            name = "Show network overlay",
+            description = "Shows a overlay of network information like your ping or packet drops etc.",
+            section = advancedSection,
+            position = 2)
+    default boolean showNetworkOverlay() {
+        return false;
     }
 
     enum INDICATION_TYPE {

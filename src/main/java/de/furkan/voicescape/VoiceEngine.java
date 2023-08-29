@@ -160,7 +160,7 @@ public class VoiceEngine {
 
     public void sendVoicePacket(VoicePacket voicePacket) {
         String data = voiceScapePlugin.gson.toJson(voicePacket);
-     //   System.out.println("Sending packet with size: " + data.length() + " bytes | " + data.length() / 1024 + " kb");
+        //System.out.println("Sending packet with size: " + data.length() + " bytes | " + data.length() / 1024 + " kb");
         sendRawMessage(data);
     }
 
