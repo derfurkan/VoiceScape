@@ -80,10 +80,12 @@ public class VoiceScapePlugin extends Plugin {
 
 
     private void initializePlugin() {
+        System.out.println("Initializing VoiceScape plugin");
         voiceEngine = new VoiceEngine(this);
         voiceEngine.openConnection();
         keyManager.registerKeyListener(hotkeyListener);
         overlayManager.add(voiceScapeOverlay = new VoiceScapeOverlay(this));
+        System.out.println("VoiceScape plugin initialized");
     }
 
     private void shutdownPlugin() {
@@ -94,6 +96,7 @@ public class VoiceScapePlugin extends Plugin {
             voiceEngine = null;
         }
         registeredPlayers.clear();
+        isLoggedIn = false;
     }
 
     @Subscribe
@@ -112,17 +115,21 @@ public class VoiceScapePlugin extends Plugin {
         }
     }
 
+    boolean isLoggedIn = false;
+
     @Subscribe
     public void onGameStateChanged(final GameStateChanged gameStateChanged) {
-        if (gameStateChanged.getGameState() == GameState.LOGGED_IN) {
+        if (gameStateChanged.getGameState() == GameState.LOGGED_IN && !isLoggedIn) {
             new Timer().schedule(new TimerTask() {
                 @Override
                 public void run() {
                     initializePlugin();
                 }
             },3000);
-        } else if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN) {
+            isLoggedIn = true;
+        } else if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN || gameStateChanged.getGameState() == GameState.CONNECTION_LOST || gameStateChanged.getGameState() == GameState.HOPPING) {
             shutdownPlugin();
+            isLoggedIn = false;
         }
     }
 
@@ -143,6 +150,7 @@ public class VoiceScapePlugin extends Plugin {
 
     public void onRawMessageReceived(String message) {
         //Using try catch to prevent plugin from crashing
+        //System.out.println("Received packet with size " + message.length() + " bytes | " + message.length() / 1024 + " kb");
         try {
             if (message.startsWith("delete#")) {
                 registeredPlayers.remove(message.split("#")[1]);
@@ -182,7 +190,7 @@ public class VoiceScapePlugin extends Plugin {
 
                 //Calculate volume based on distance
                 int distanceToSender = client.getLocalPlayer().getWorldLocation().distanceTo(sender.getWorldLocation());
-                float volume = 1 - ((float) distanceToSender / config.minDistance()) - 0.005f;
+                float volume = 1 - ((float) distanceToSender / config.minDistance());
                 voiceEngine.playAudio(voicePacket.audioData, volume);
 
             }

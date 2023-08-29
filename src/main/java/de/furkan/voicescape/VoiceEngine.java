@@ -11,6 +11,7 @@ import javax.sound.sampled.*;
 import javax.swing.*;
 import java.io.ByteArrayInputStream;
 import java.util.List;
+import java.util.Objects;
 
 public class VoiceEngine {
 
@@ -32,7 +33,7 @@ public class VoiceEngine {
 
 
     AudioFormat getAudioFormat() {
-        return new AudioFormat(44100.0f, 16, 1, true, true);
+        return new AudioFormat(44100.0f, 16, 1, true, false);
     }
 
 
@@ -153,7 +154,9 @@ public class VoiceEngine {
 
 
     public void sendVoicePacket(VoicePacket voicePacket) {
-        sendRawMessage(voiceScapePlugin.gson.toJson(voicePacket));
+        String data = voiceScapePlugin.gson.toJson(voicePacket);
+        //System.out.println("Sending packet with size: " + data.length() + " bytes | " + data.length() / 1024 + " kb");
+        sendRawMessage(data);
     }
 
     public VoicePacket buildVoicePacket(byte[] voiceData) {
@@ -194,9 +197,10 @@ public class VoiceEngine {
 
 
     public void startMicrophoneCapture() {
-
-        if(microphoneCaptureThread != null)
+        if(microphoneCaptureThread != null) {
             microphoneCaptureThread.interrupt();
+            microphoneCaptureThread = null;
+        }
 
         microphoneCaptureThread = new Thread(() -> {
             try {
@@ -212,12 +216,20 @@ public class VoiceEngine {
 
                     if(voiceScapePlugin.client.getGameState() != GameState.LOGGED_IN)
                         continue;
+
+                    if(voiceScapePlugin.client.getPlayers().isEmpty()) {
+                        continue;
+                    }
+
                     boolean isValid = false;
 
                     for (Player player : voiceScapePlugin.client.getPlayers()) {
                         if(player == null)
                             continue;
+                        if(Objects.equals(player.getName(), voiceScapePlugin.client.getLocalPlayer().getName()) && !voiceScapePlugin.config.loopBack())
+                            continue;
                         if(voiceScapePlugin.registeredPlayers.contains(voiceScapePlugin.hashWithSha256(player.getName()))) {
+
                             isValid = true;
                             break;
                         }
@@ -270,7 +282,6 @@ public class VoiceEngine {
             FloatControl volumeControl = (FloatControl) currentClip.getControl(FloatControl.Type.MASTER_GAIN);
 
             volumeControl.setValue(20f * (float) Math.log10(volume));
-
 
             currentClip.start();
         } catch (Exception e) {
