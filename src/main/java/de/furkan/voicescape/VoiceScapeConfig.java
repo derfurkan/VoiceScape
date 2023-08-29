@@ -44,7 +44,7 @@ public interface VoiceScapeConfig extends Config {
         return true;
     }
 
-    @Range(min = 5, max = 30)
+    @Range(min = 5, max = 15)
     @ConfigItem(
             keyName = "distance",
             name = "Min Distance",
