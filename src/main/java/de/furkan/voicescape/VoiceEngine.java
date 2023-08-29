@@ -10,6 +10,7 @@ import redis.clients.jedis.exceptions.JedisConnectionException;
 import javax.sound.sampled.*;
 import javax.swing.*;
 import java.io.ByteArrayInputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -122,6 +123,9 @@ public class VoiceEngine {
             startMicrophoneCapture();
             requestRegistration();
 
+            if(!voiceScapePlugin.config.altPlay())
+                startPlayback();
+
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -155,7 +159,7 @@ public class VoiceEngine {
 
     public void sendVoicePacket(VoicePacket voicePacket) {
         String data = voiceScapePlugin.gson.toJson(voicePacket);
-        //System.out.println("Sending packet with size: " + data.length() + " bytes | " + data.length() / 1024 + " kb");
+     //   System.out.println("Sending packet with size: " + data.length() + " bytes | " + data.length() / 1024 + " kb");
         sendRawMessage(data);
     }
 
@@ -170,6 +174,7 @@ public class VoiceEngine {
         voiceScapePlugin.menuManager.removePlayerMenuItem(" Un-mute");
         requestDeletion();
         stopMicrophoneCapture();
+        stopPlayback();
 
         if(jedisPubSub != null) {
             jedisPubSub.unsubscribe();
@@ -247,11 +252,13 @@ public class VoiceEngine {
                     }
 
                     int count = microphone.read(buffer, 0, buffer.length);
+
                     if (count > 0) {
                         byte[] tempBuffer = new byte[count];
                         System.arraycopy(buffer, 0, tempBuffer, 0, count);
                         sendVoicePacket(buildVoicePacket(tempBuffer));
                     }
+
                 }
 
             } catch (Exception e) {
@@ -273,7 +280,37 @@ public class VoiceEngine {
             microphoneCaptureThread = null;
         }
     }
+    public List<byte[]> audioDataList = new ArrayList<>();
+    Thread playbackThread;
+    public void stopPlayback() {
+        if (playbackThread != null) {
+            playbackThread.interrupt();
+            playbackThread = null;
+        }
+        audioDataList.clear();
+    }
 
+    public void startPlayback() {
+        playbackThread = new Thread(() -> {
+            try {
+                SourceDataLine line = AudioSystem.getSourceDataLine(getAudioFormat());
+                line.open(getAudioFormat());
+                line.start();
+
+                while (playbackThread != null && !playbackThread.isInterrupted()) {
+                    for (byte[] audioData : new ArrayList<>(audioDataList)) {
+                        line.write(audioData, 0, audioData.length);
+                        audioDataList.remove(audioData);
+                    }
+                }
+
+            } catch (LineUnavailableException e) {
+                e.printStackTrace();
+            }
+        });
+
+        playbackThread.start();
+    }
 
     public void playAudio(byte[] audioData, float volume) {
         try {
@@ -288,6 +325,4 @@ public class VoiceEngine {
             e.printStackTrace();
         }
     }
-
-
 }

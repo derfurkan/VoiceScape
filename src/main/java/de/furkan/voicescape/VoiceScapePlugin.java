@@ -17,12 +17,15 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.HotkeyListener;
+import net.runelite.client.util.SwingUtil;
 
 import javax.inject.Inject;
+import javax.swing.*;
 import java.awt.event.KeyEvent;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.*;
+import java.util.Timer;
 
 @Slf4j
 @PluginDescriptor(name = "VoiceScape")
@@ -145,12 +148,21 @@ public class VoiceScapePlugin extends Plugin {
                 registeredPlayers.add(hashWithSha256(client.getLocalPlayer().getName()));
             else
                 registeredPlayers.remove(hashWithSha256(client.getLocalPlayer().getName()));
+        } else if(configChanged.getKey().equals("altplay")) {
+            SwingUtilities.invokeLater(() -> {
+                JOptionPane.showMessageDialog(
+                        null,
+                        "You need to re-enable the plugin for this setting to take effect.",
+                        "VoiceScape",
+                        JOptionPane.INFORMATION_MESSAGE);
+            });
+            shutdownPlugin();
         }
     }
 
     public void onRawMessageReceived(String message) {
         //Using try catch to prevent plugin from crashing
-        //System.out.println("Received packet with size " + message.length() + " bytes | " + message.length() / 1024 + " kb");
+ //      System.out.println("Received packet with size " + message.length() + " bytes | " + message.length() / 1024 + " kb");
         try {
             if (message.startsWith("delete#")) {
                 registeredPlayers.remove(message.split("#")[1]);
@@ -187,12 +199,14 @@ public class VoiceScapePlugin extends Plugin {
 
 
             if (isInSurroundingArea) {
-
                 //Calculate volume based on distance
                 int distanceToSender = client.getLocalPlayer().getWorldLocation().distanceTo(sender.getWorldLocation());
                 float volume = 1 - ((float) distanceToSender / config.minDistance());
-                voiceEngine.playAudio(voicePacket.audioData, volume);
 
+                if(!config.altPlay())
+                    voiceEngine.audioDataList.add(voicePacket.audioData);
+                else
+                    voiceEngine.playAudio(voicePacket.audioData, volume);
             }
 
 

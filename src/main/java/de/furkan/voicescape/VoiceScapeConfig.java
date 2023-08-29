@@ -94,8 +94,17 @@ public interface VoiceScapeConfig extends Config {
     default SERVER_TYPE serverType() {
         return SERVER_TYPE.DEFAULT;
     }
+    @ConfigItem(
+            keyName = "altplay",
+            name = "Alternative Playback",
+            description = "This playback method will cause cuts in the audio but may fix some issues with different audio devices",
+            section = voiceSection,
+            position = 7)
+    default boolean altPlay() {
+        return false;
+    }
 
-    @ConfigItem(keyName = " ", name = " ", description = " ", section = serverSection, position = 3)
+    @ConfigItem(keyName = " ", name = " ", description = " ", section = serverSection, position = 4)
     default Long spacer() {
         return 2L;
     }
