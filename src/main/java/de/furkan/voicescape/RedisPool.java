@@ -81,14 +81,13 @@ public class RedisPool
 
     class PooledJedis extends Jedis
     {
-        PooledJedis(String host)
-        {
-            super(host);
-        }
+
+
 
         PooledJedis(String host, int port)
         {
             super(host, port);
+            super.auth("", "");
         }
 
         PooledJedis(String host, int port, String username, String password)
@@ -115,7 +114,8 @@ public class RedisPool
                 e.printStackTrace();
             }
 
-            queue.offer(new PooledJedis(redisHost));
+            queue.clear();
+
         }
     }
 }

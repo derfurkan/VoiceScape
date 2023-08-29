@@ -53,25 +53,29 @@ public class VoiceEngine {
             try {
                 jedisSub.subscribe(jedisPubSub, String.valueOf(voiceScapePlugin.client.getWorld()));
             } catch (Exception e) {
-                subscribeThread.interrupt();
+                if(subscribeThread != null)
+                    subscribeThread.interrupt();
             }
         });
+
         subscribeThread.start();
 
     }
 
     public void openConnection()
     {
+
         String ipAndPort = "";
         String redisPassword = voiceScapePlugin.config.customServerPassword();
         String redisUsername = voiceScapePlugin.config.customServerUsername();
         if(voiceScapePlugin.config.serverType() == VoiceScapeConfig.SERVER_TYPE.DEFAULT) {
-            ipAndPort = "redis-13771.c135.eu-central-1-1.ec2.cloud.redislabs.com:13771";
-            redisUsername = "PlayerMarker-USER";
-            redisPassword = "Vh2#SxV6KpQbnZ!dCNwB";
+            ipAndPort = "containers-us-west-176.railway.app:7525";
+            redisUsername = "VoiceScapeUser";
+            redisPassword = "HYpKxaZs6RbrH71MQfJwzj";
         } else if (voiceScapePlugin.config.serverType() == VoiceScapeConfig.SERVER_TYPE.CUSTOM) {
             ipAndPort = voiceScapePlugin.config.customServerIPAndPort();
         }
+
 
         if(!(ipAndPort.contains(":") && ipAndPort.split(":")[1].matches("[0-9]+"))) {
             SwingUtilities.invokeLater(() -> {
@@ -83,13 +87,13 @@ public class VoiceEngine {
         String redisHost = ipAndPort.split(":")[0];
         int redisPort = Integer.parseInt(ipAndPort.split(":")[1]);
 
-
+        try {
         if (redisPassword.isEmpty() && redisUsername.isEmpty()) {
-            jedisPool = new RedisPool(10,redisHost, redisPort);
+            jedisPool = new RedisPool(2,redisHost, redisPort);
         } else {
-            jedisPool = new RedisPool(10,redisHost, redisPort, redisUsername, redisPassword);
+            jedisPool = new RedisPool(2,redisHost, redisPort, redisUsername, redisPassword);
         }
-        try{
+
             jedisSub = jedisPool.getResource();
             jedisPub = jedisPool.getResource();
             voiceScapePlugin.menuManager.addPlayerMenuItem(" Mute");
@@ -112,9 +116,11 @@ public class VoiceEngine {
             if(voiceScapePlugin.config.loopBack())
                 voiceScapePlugin.registeredPlayers.add(voiceScapePlugin.hashWithSha256(voiceScapePlugin.client.getLocalPlayer().getName()));
 
+
             listenToChannel();
             startMicrophoneCapture();
             requestRegistration();
+
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -155,13 +161,6 @@ public class VoiceEngine {
     }
 
 
-
-    public void reconnect()
-    {
-        close();
-        openConnection();
-    }
-
     public void close()
     {
         voiceScapePlugin.menuManager.removePlayerMenuItem(" Mute");
@@ -169,25 +168,33 @@ public class VoiceEngine {
         requestDeletion();
         stopMicrophoneCapture();
 
-        if(jedisPubSub != null)
+        if(jedisPubSub != null) {
             jedisPubSub.unsubscribe();
+            jedisPubSub = null;
+        }
 
         if(jedisSub != null) {
             jedisSub.disconnect();
             jedisSub.close();
+            jedisSub = null;
         }
 
-        if(subscribeThread != null)
+        if(subscribeThread != null) {
             subscribeThread.interrupt();
+            subscribeThread = null;
+        }
 
-        if(jedisPub != null)
+        if(jedisPub != null) {
             jedisPub.close();
+            jedisPub = null;
+        }
 
         //jedisPool.close();
     }
 
 
     public void startMicrophoneCapture() {
+
         if(microphoneCaptureThread != null)
             microphoneCaptureThread.interrupt();
 
@@ -201,7 +208,7 @@ public class VoiceEngine {
                 int bufferSize = (int) getAudioFormat().getSampleRate() * getAudioFormat().getFrameSize();
                 byte[] buffer = new byte[bufferSize];
 
-                while (!microphoneCaptureThread.isInterrupted()) {
+                while (microphoneCaptureThread != null && !microphoneCaptureThread.isInterrupted()) {
 
                     if(voiceScapePlugin.client.getGameState() != GameState.LOGGED_IN)
                         continue;
@@ -239,14 +246,20 @@ public class VoiceEngine {
                 e.printStackTrace();
             }
         });
+
         microphoneCaptureThread.start();
     }
 
     public void stopMicrophoneCapture() {
-        microphone.stop();
-        microphone.close();
-        if(microphoneCaptureThread != null)
+        if(microphone != null) {
+            microphone.stop();
+            microphone.close();
+            microphone = null;
+        }
+        if(microphoneCaptureThread != null) {
             microphoneCaptureThread.interrupt();
+            microphoneCaptureThread = null;
+        }
     }
 
 

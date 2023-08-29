@@ -89,8 +89,10 @@ public class VoiceScapePlugin extends Plugin {
     private void shutdownPlugin() {
         keyManager.unregisterKeyListener(hotkeyListener);
         overlayManager.remove(voiceScapeOverlay);
-        if(voiceEngine != null)
+        if(voiceEngine != null) {
             voiceEngine.close();
+            voiceEngine = null;
+        }
         registeredPlayers.clear();
     }
 
@@ -131,7 +133,7 @@ public class VoiceScapePlugin extends Plugin {
 
     @Subscribe
     public void onConfigChanged(final ConfigChanged configChanged) {
-        if(configChanged.getKey().equals("loopback")) {
+        if(configChanged.getKey().equals("loopback") && client.getGameState() == GameState.LOGGED_IN) {
             if(config.loopBack())
                 registeredPlayers.add(hashWithSha256(client.getLocalPlayer().getName()));
             else
