@@ -162,7 +162,7 @@ public class VoiceScapePlugin extends Plugin {
 
     public void onRawMessageReceived(String message) {
         //Using try catch to prevent plugin from crashing
- //      System.out.println("Received packet with size " + message.length() + " bytes | " + message.length() / 1024 + " kb");
+      // System.out.println("Received packet with size " + message.length() + " bytes | " + message.length() / 1024 + " kb");
         try {
             if (message.startsWith("delete#")) {
                 registeredPlayers.remove(message.split("#")[1]);
@@ -204,7 +204,7 @@ public class VoiceScapePlugin extends Plugin {
                 float volume = 1 - ((float) distanceToSender / config.minDistance());
 
                 if(!config.altPlay())
-                    voiceEngine.audioDataList.add(voicePacket.audioData);
+                    voiceEngine.audioDataList.put(voicePacket.audioData,volume);
                 else
                     voiceEngine.playAudio(voicePacket.audioData, volume);
             }

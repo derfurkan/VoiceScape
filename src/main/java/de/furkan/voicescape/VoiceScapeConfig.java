@@ -97,7 +97,7 @@ public interface VoiceScapeConfig extends Config {
     @ConfigItem(
             keyName = "altplay",
             name = "Alternative Playback",
-            description = "This playback method will cause cuts in the audio but may fix some issues with different audio devices",
+            description = "This playback method will cause cuts in the audio but may fix some issues with different audio devices and latency",
             section = voiceSection,
             position = 7)
     default boolean altPlay() {

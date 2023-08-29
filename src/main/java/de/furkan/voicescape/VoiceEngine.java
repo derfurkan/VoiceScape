@@ -11,6 +11,7 @@ import javax.sound.sampled.*;
 import javax.swing.*;
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
@@ -280,7 +281,7 @@ public class VoiceEngine {
             microphoneCaptureThread = null;
         }
     }
-    public List<byte[]> audioDataList = new ArrayList<>();
+    public HashMap<byte[],Float> audioDataList = new HashMap<>();
     Thread playbackThread;
     public void stopPlayback() {
         if (playbackThread != null) {
@@ -295,13 +296,16 @@ public class VoiceEngine {
             try {
                 SourceDataLine line = AudioSystem.getSourceDataLine(getAudioFormat());
                 line.open(getAudioFormat());
+
                 line.start();
 
                 while (playbackThread != null && !playbackThread.isInterrupted()) {
-                    for (byte[] audioData : new ArrayList<>(audioDataList)) {
-                        line.write(audioData, 0, audioData.length);
-                        audioDataList.remove(audioData);
-                    }
+                    new HashMap<>(audioDataList).forEach((bytes, aFloat) -> {
+                        FloatControl volumeControl = (FloatControl) line.getControl(FloatControl.Type.MASTER_GAIN);
+                        volumeControl.setValue(20f * (float) Math.log10(aFloat));
+                        line.write(bytes, 0, bytes.length);
+                        audioDataList.remove(bytes);
+                    });
                 }
 
             } catch (LineUnavailableException e) {
