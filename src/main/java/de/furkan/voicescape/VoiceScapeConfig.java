@@ -146,7 +146,7 @@ public interface VoiceScapeConfig extends Config {
 
     @ConfigItem(
             keyName = "showwhoisconnected",
-            name = "Connection indicator",
+            name = "Show connection indicator",
             description = "Show who is connected to the voice chat",
             section = indicatorSection,
             position = 0)
@@ -206,11 +206,20 @@ public interface VoiceScapeConfig extends Config {
     }
 
     @ConfigItem(
+            keyName = "lowbuffer",
+            name = "Low Capture Buffer",
+            description = "This will reduce latency when sending voice but can cause your voice to sound choppy.",
+            section = advancedSection,
+            position = 0)
+    default boolean lowCaptureBuffer() {
+        return false;
+    }
+    @ConfigItem(
             keyName = "altplay",
             name = "Alternative Playback",
             description = "This can cause a lot of packet loss if you have a high ping but reduces latency.",
             section = advancedSection,
-            position = 0)
+            position = 1)
     default boolean altPlay() {
         return false;
     }
@@ -222,7 +231,7 @@ public interface VoiceScapeConfig extends Config {
             name = "Max packet age",
             description = "The value in milliseconds a voice packet can be old before it gets dropped on receive. A lower value reduces latency but can drop every voice packet if you have a high ping.",
             section = advancedSection,
-            position = 1)
+            position = 2)
     default int maxPacketAge() {
         return 2000;
     }
@@ -232,7 +241,7 @@ public interface VoiceScapeConfig extends Config {
             name = "Show network overlay",
             description = "Shows a overlay of network information like your ping or packet drops etc.",
             section = advancedSection,
-            position = 2)
+            position = 3)
     default boolean showNetworkOverlay() {
         return false;
     }

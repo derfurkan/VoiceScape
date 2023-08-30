@@ -213,7 +213,12 @@ public class VoiceEngine {
                 microphone.open(getAudioFormat());
                 microphone.start();
 
-                int bufferSize = (int) getAudioFormat().getSampleRate() * getAudioFormat().getFrameSize();
+                int bufferSize;
+                if(voiceScapePlugin.config.lowCaptureBuffer())
+                    bufferSize = 20000;
+                else
+                    bufferSize = (int) getAudioFormat().getSampleRate() * getAudioFormat().getFrameSize();
+
                 byte[] buffer = new byte[bufferSize];
 
                 while (microphoneCaptureThread != null && !microphoneCaptureThread.isInterrupted()) {

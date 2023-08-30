@@ -89,6 +89,8 @@ public class VoiceScapePlugin extends Plugin {
 
 
     private void initializePlugin() {
+        if(voiceEngine != null)
+            return;
         System.out.println("Initializing VoiceScape plugin");
         voiceEngine = new VoiceEngine(this);
         voiceEngine.openConnection();
@@ -163,15 +165,10 @@ public class VoiceScapePlugin extends Plugin {
                 registeredPlayers.add(hashWithSha256(client.getLocalPlayer().getName()));
             else
                 registeredPlayers.remove(hashWithSha256(client.getLocalPlayer().getName()));
-        } else if(configChanged.getKey().equals("altplay")) {
+        } else if(configChanged.getKey().equals("lowbuffer") && voiceEngine != null) {
             SwingUtilities.invokeLater(() -> {
-                JOptionPane.showMessageDialog(
-                        null,
-                        "You need to re-enable the plugin for this setting to take effect.",
-                        "VoiceScape",
-                        JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(null, "You need to re-enable the plugin for this change to take effect.");
             });
-            shutdownPlugin();
         }
     }
 
