@@ -208,7 +208,7 @@ public interface VoiceScapeConfig extends Config {
     @ConfigItem(
             keyName = "altplay",
             name = "Alternative Playback",
-            description = "This playback method will cause cuts in the audio but may fix some issues with different audio devices and latency",
+            description = "This can cause a lot of packet loss if you have a high ping but reduces latency.",
             section = advancedSection,
             position = 0)
     default boolean altPlay() {

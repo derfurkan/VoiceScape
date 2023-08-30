@@ -91,11 +91,11 @@ public class VoiceEngine {
         int redisPort = Integer.parseInt(ipAndPort.split(":")[1]);
 
         try {
-        if (redisPassword.isEmpty() && redisUsername.isEmpty()) {
-            jedisPool = new RedisPool(2,redisHost, redisPort);
-        } else {
-            jedisPool = new RedisPool(2,redisHost, redisPort, redisUsername, redisPassword);
-        }
+            if (redisPassword.isEmpty() && redisUsername.isEmpty()) {
+                jedisPool = new RedisPool(2,redisHost, redisPort);
+            } else {
+                jedisPool = new RedisPool(2,redisHost, redisPort, redisUsername, redisPassword);
+            }
 
             jedisSub = jedisPool.getResource();
             jedisPub = jedisPool.getResource();
@@ -123,10 +123,6 @@ public class VoiceEngine {
             listenToChannel();
             startMicrophoneCapture();
             requestRegistration();
-
-            if(!voiceScapePlugin.config.altPlay())
-                startPlayback();
-
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -158,15 +154,7 @@ public class VoiceEngine {
     }
 
 
-    public void sendVoicePacket(VoicePacket voicePacket) {
-        String data = voiceScapePlugin.gson.toJson(voicePacket);
-        //System.out.println("Sending packet with size: " + data.length() + " bytes | " + data.length() / 1024 + " kb");
-        sendRawMessage(data);
-    }
 
-    public VoicePacket buildVoicePacket(byte[] voiceData) {
-        return new VoicePacket(voiceData, voiceScapePlugin.hashWithSha256(voiceScapePlugin.client.getLocalPlayer().getName()));
-    }
 
 
     public void close()
@@ -175,7 +163,6 @@ public class VoiceEngine {
         voiceScapePlugin.menuManager.removePlayerMenuItem(" Un-mute");
         requestDeletion();
         stopMicrophoneCapture();
-        stopPlayback();
 
         if(jedisPubSub != null) {
             jedisPubSub.unsubscribe();
@@ -202,6 +189,17 @@ public class VoiceEngine {
     }
 
 
+    public void sendVoicePacket(VoicePacket voicePacket) {
+        String data = voiceScapePlugin.gson.toJson(voicePacket);
+        //System.out.println("Sending packet with size: " + data.length() + " bytes | " + data.length() / 1024 + " kb");
+
+        sendRawMessage(data);
+    }
+
+    public VoicePacket buildVoicePacket(byte[] voiceData) {
+        return new VoicePacket(voiceData, voiceScapePlugin.hashWithSha256(voiceScapePlugin.client.getLocalPlayer().getName()));
+    }
+
     public void startMicrophoneCapture() {
         if(microphoneCaptureThread != null) {
             microphoneCaptureThread.interrupt();
@@ -210,7 +208,7 @@ public class VoiceEngine {
 
         microphoneCaptureThread = new Thread(() -> {
             try {
-               DataLine.Info info = new DataLine.Info(TargetDataLine.class, getAudioFormat());
+                DataLine.Info info = new DataLine.Info(TargetDataLine.class, getAudioFormat());
                 microphone = (TargetDataLine) AudioSystem.getLine(info);
                 microphone.open(getAudioFormat());
                 microphone.start();
@@ -257,6 +255,20 @@ public class VoiceEngine {
                     if (count > 0) {
                         byte[] tempBuffer = new byte[count];
                         System.arraycopy(buffer, 0, tempBuffer, 0, count);
+
+                        //Limit test the server by sending more packets
+
+                /*        for(int i = 0; i < 2; i++) {
+                            //Send random audio data
+                            byte[] randomData = new byte[bufferSize];
+                            for(int j = 0; j < randomData.length; j++) {
+                                randomData[j] = (byte) (Math.random() * 255);
+                            }
+                            System.out.println("Sending random packet with size: " + randomData.length + " bytes | " + randomData.length / 1024 + " kb");
+                            sendVoicePacket(buildVoicePacket(randomData));
+                        }
+*/
+
                         sendVoicePacket(buildVoicePacket(tempBuffer));
                     }
 
@@ -281,52 +293,5 @@ public class VoiceEngine {
             microphoneCaptureThread = null;
         }
     }
-    public HashMap<byte[],Float> audioDataList = new HashMap<>();
-    Thread playbackThread;
-    public void stopPlayback() {
-        if (playbackThread != null) {
-            playbackThread.interrupt();
-            playbackThread = null;
-        }
-        audioDataList.clear();
-    }
 
-    public void startPlayback() {
-        playbackThread = new Thread(() -> {
-            try {
-                SourceDataLine line = AudioSystem.getSourceDataLine(getAudioFormat());
-                line.open(getAudioFormat());
-
-                line.start();
-
-                while (playbackThread != null && !playbackThread.isInterrupted()) {
-                    new HashMap<>(audioDataList).forEach((bytes, aFloat) -> {
-                        FloatControl volumeControl = (FloatControl) line.getControl(FloatControl.Type.MASTER_GAIN);
-                        volumeControl.setValue(20f * (float) Math.log10(aFloat));
-                        line.write(bytes, 0, bytes.length);
-                        audioDataList.remove(bytes);
-                    });
-                }
-
-            } catch (LineUnavailableException e) {
-                e.printStackTrace();
-            }
-        });
-
-        playbackThread.start();
-    }
-
-    public void playAudio(byte[] audioData, float volume) {
-        try {
-            currentClip = AudioSystem.getClip();
-            currentClip.open(getAudioFormat(), audioData, 0, audioData.length);
-            FloatControl volumeControl = (FloatControl) currentClip.getControl(FloatControl.Type.MASTER_GAIN);
-
-            volumeControl.setValue(20f * (float) Math.log10(volume));
-
-            currentClip.start();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
 }

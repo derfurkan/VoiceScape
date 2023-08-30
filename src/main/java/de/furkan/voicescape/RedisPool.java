@@ -87,7 +87,7 @@ public class RedisPool
         PooledJedis(String host, int port)
         {
             super(host, port);
-            super.auth("", "");
+            super.ping();
         }
 
         PooledJedis(String host, int port, String username, String password)
