@@ -9,6 +9,7 @@ import java.awt.*;
 
 public class VoiceScapeNetworkOverlay extends OverlayPanel {
     private final VoiceScapePlugin voiceScapePlugin;
+
     public VoiceScapeNetworkOverlay(VoiceScapePlugin voiceScapePlugin) {
         this.voiceScapePlugin = voiceScapePlugin;
         setPosition(OverlayPosition.TOP_LEFT);

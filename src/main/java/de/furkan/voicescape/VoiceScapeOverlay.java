@@ -10,8 +10,8 @@ import net.runelite.client.ui.overlay.OverlayUtil;
 import java.awt.*;
 
 public class VoiceScapeOverlay extends Overlay {
-    public String currentLine = "";
     private final VoiceScapePlugin voiceScapePlugin;
+    public String currentLine = "";
 
     public VoiceScapeOverlay(VoiceScapePlugin voiceScapePlugin) {
         this.voiceScapePlugin = voiceScapePlugin;
@@ -30,7 +30,7 @@ public class VoiceScapeOverlay extends Overlay {
                 }
                 if (voiceScapePlugin.registeredPlayers.contains(
                         voiceScapePlugin.hashWithSha256(player.getName()))) {
-                    if (( voiceScapePlugin.mutedPlayers.contains(voiceScapePlugin.hashWithSha256(player.getName())) || ( voiceScapePlugin.config.muteAll() && !voiceScapePlugin.unmutedPlayers.contains(voiceScapePlugin.hashWithSha256(player.getName())) && !player.getName().equals(voiceScapePlugin.client.getLocalPlayer().getName()) ) ) && voiceScapePlugin.config.showMuteIndicator()) {
+                    if ((voiceScapePlugin.mutedPlayers.contains(voiceScapePlugin.hashWithSha256(player.getName())) || (voiceScapePlugin.config.muteAll() && !voiceScapePlugin.unmutedPlayers.contains(voiceScapePlugin.hashWithSha256(player.getName())) && !player.getName().equals(voiceScapePlugin.client.getLocalPlayer().getName()))) && voiceScapePlugin.config.showMuteIndicator()) {
                         String a = "Muted " + player.getName();
                         int stringLength = graphics.getFontMetrics().stringWidth(a) - 40;
                         net.runelite.api.Point textLocation =

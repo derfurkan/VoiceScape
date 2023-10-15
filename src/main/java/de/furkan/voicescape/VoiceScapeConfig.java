@@ -99,7 +99,7 @@ public interface VoiceScapeConfig extends Config {
             section = serverSection,
             position = 2)
     default SERVER_TYPE serverType() {
-        return SERVER_TYPE.DEFAULT;
+        return SERVER_TYPE.NONE;
     }
 
 
@@ -115,10 +115,10 @@ public interface VoiceScapeConfig extends Config {
             position = 7,
             section = serverSection
     )
-    default String customServerIPAndPort()
-    {
+    default String customServerIPAndPort() {
         return "127.0.0.1:1234";
     }
+
     @ConfigItem(
             keyName = "customserverpassword",
             name = "Custom Server Password (Optional)",
@@ -126,8 +126,7 @@ public interface VoiceScapeConfig extends Config {
             position = 10,
             section = serverSection
     )
-    default String customServerPassword()
-    {
+    default String customServerPassword() {
         return "";
     }
 
@@ -138,8 +137,7 @@ public interface VoiceScapeConfig extends Config {
             position = 9,
             section = serverSection
     )
-    default String customServerUsername()
-    {
+    default String customServerUsername() {
         return "";
     }
 
@@ -208,12 +206,13 @@ public interface VoiceScapeConfig extends Config {
     @ConfigItem(
             keyName = "lowbuffer",
             name = "Low Capture Buffer",
-            description = "This will reduce latency when sending voice but can cause your voice to sound choppy.",
+            description = "This will reduce latency when sending voice but can cause your voice sounding choppy.",
             section = advancedSection,
             position = 0)
     default boolean lowCaptureBuffer() {
         return false;
     }
+
     @ConfigItem(
             keyName = "altplay",
             name = "Alternative Playback",
@@ -254,6 +253,7 @@ public interface VoiceScapeConfig extends Config {
 
     enum SERVER_TYPE {
         DEFAULT,
-        CUSTOM
+        CUSTOM,
+        NONE
     }
 }

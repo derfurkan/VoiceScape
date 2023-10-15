@@ -1,7 +1,5 @@
 package de.furkan.voicescape;
 
-import javax.sound.midi.SysexMessage;
-
 public class VoicePacket {
 
     byte[] audioData;

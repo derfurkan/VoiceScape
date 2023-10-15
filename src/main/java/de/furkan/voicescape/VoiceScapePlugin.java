@@ -17,15 +17,14 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.HotkeyListener;
-import net.runelite.client.util.SwingUtil;
 
 import javax.inject.Inject;
 import javax.swing.*;
 import java.awt.event.KeyEvent;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.util.*;
 import java.util.Timer;
+import java.util.*;
 
 @Slf4j
 @PluginDescriptor(name = "VoiceScape")
@@ -38,18 +37,7 @@ public class VoiceScapePlugin extends Plugin {
     public Gson gson;
     @Inject
     public VoiceScapeConfig config;
-    @Inject
-    OverlayManager overlayManager;
-
-    @Inject
-    KeyManager keyManager;
-
     public boolean canSpeak = false;
-
-    public boolean droppingPacket = true;
-
-    public HashMap<String,VoicePlaybackThread> playbackThreads = new HashMap<>();
-
     private final HotkeyListener hotkeyListener =
             new HotkeyListener(() -> this.config.pushToTalkBind()) {
                 @Override
@@ -67,19 +55,24 @@ public class VoiceScapePlugin extends Plugin {
                     }, 1000);
                 }
             };
+    public boolean droppingPacket = true;
+    public HashMap<String, VoicePlaybackThread> playbackThreads = new HashMap<>();
     public VoiceScapeOverlay voiceScapeOverlay;
-
     public VoiceScapeNetworkOverlay voiceScapeNetworkOverlay;
     public VoiceEngine voiceEngine;
-
     public List<String> registeredPlayers = new ArrayList<>();
-
     public List<String> mutedPlayers = new ArrayList<>();
-
     public List<String> unmutedPlayers = new ArrayList<>();
-
     @Inject
     public MenuManager menuManager;
+    public long pingInMs = 0;
+    @Inject
+    OverlayManager overlayManager;
+    @Inject
+    KeyManager keyManager;
+    boolean isLoggedIn = false;
+    private long lastPacketReceived = 0;
+
     @Override
     protected void startUp() throws Exception {
         if (client.getGameState().equals(GameState.LOGGED_IN)) {
@@ -87,9 +80,8 @@ public class VoiceScapePlugin extends Plugin {
         }
     }
 
-
     private void initializePlugin() {
-        if(voiceEngine != null)
+        if (voiceEngine != null)
             return;
         System.out.println("Initializing VoiceScape plugin");
         voiceEngine = new VoiceEngine(this);
@@ -109,7 +101,7 @@ public class VoiceScapePlugin extends Plugin {
             voicePlaybackThread.playbackThread.interrupt();
         });
         playbackThreads.clear();
-        if(voiceEngine != null) {
+        if (voiceEngine != null) {
             voiceEngine.close();
             voiceEngine = null;
         }
@@ -135,8 +127,6 @@ public class VoiceScapePlugin extends Plugin {
         }
     }
 
-    boolean isLoggedIn = false;
-
     @Subscribe
     public void onGameStateChanged(final GameStateChanged gameStateChanged) {
         if (gameStateChanged.getGameState() == GameState.LOGGED_IN && !isLoggedIn) {
@@ -145,7 +135,7 @@ public class VoiceScapePlugin extends Plugin {
                 public void run() {
                     initializePlugin();
                 }
-            },3000);
+            }, 3000);
             isLoggedIn = true;
         } else if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN || gameStateChanged.getGameState() == GameState.CONNECTION_LOST || gameStateChanged.getGameState() == GameState.HOPPING) {
             shutdownPlugin();
@@ -160,35 +150,31 @@ public class VoiceScapePlugin extends Plugin {
 
     @Subscribe
     public void onConfigChanged(final ConfigChanged configChanged) {
-        if(configChanged.getKey().equals("loopback") && client.getGameState() == GameState.LOGGED_IN) {
-            if(config.loopBack())
+        if (configChanged.getKey().equals("loopback") && client.getGameState() == GameState.LOGGED_IN) {
+            if (config.loopBack())
                 registeredPlayers.add(hashWithSha256(client.getLocalPlayer().getName()));
             else
                 registeredPlayers.remove(hashWithSha256(client.getLocalPlayer().getName()));
-        } else if(configChanged.getKey().equals("lowbuffer") && voiceEngine != null) {
-            SwingUtilities.invokeLater(() -> {
-                JOptionPane.showMessageDialog(null, "You need to re-enable the plugin for this change to take effect.");
-            });
+        } else if ((configChanged.getKey().equals("lowbuffer") && voiceEngine != null) || configChanged.getKey().equals("servertype")) {
+            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "You need to re-enable the plugin for this change to take effect."));
         }
-    }
 
-    private long lastPacketReceived = 0;
-    public long pingInMs = 0;
+    }
 
     public void onRawMessageReceived(String message) {
         //Using try catch to prevent plugin from crashing
-      //  System.out.println("Received packet with size " + message.length() + " bytes | " + message.length() / 1024 + " kb");
-        if(lastPacketReceived != 0)
+        //  System.out.println("Received packet with size " + message.length() + " bytes | " + message.length() / 1024 + " kb");
+        if (lastPacketReceived != 0)
             pingInMs = System.currentTimeMillis() - lastPacketReceived;
         lastPacketReceived = System.currentTimeMillis();
         try {
             if (message.startsWith("delete#")) {
-                if(message.split("#")[1].equals(client.getLocalPlayer().getName()))
+                if (message.split("#")[1].equals(client.getLocalPlayer().getName()))
                     return;
                 registeredPlayers.remove(message.split("#")[1]);
                 return;
             } else if (message.startsWith("register#")) {
-                if(message.split("#")[1].equals(client.getLocalPlayer().getName()))
+                if (message.split("#")[1].equals(client.getLocalPlayer().getName()))
                     return;
                 registeredPlayers.add(message.split("#")[1]);
                 return;
@@ -197,14 +183,15 @@ public class VoiceScapePlugin extends Plugin {
             VoicePacket voicePacket = gson.fromJson(message, VoicePacket.class);
             //Making sure voice packet is not corrupted
             if (voicePacket == null || voicePacket.audioData == null || voicePacket.audioData.length == 0) return;
-            if (!config.loopBack() && voicePacket.senderNameHashed.equals(hashWithSha256(client.getLocalPlayer().getName()))) return;
+            if (!config.loopBack() && voicePacket.senderNameHashed.equals(hashWithSha256(client.getLocalPlayer().getName())))
+                return;
             if (!registeredPlayers.contains(voicePacket.senderNameHashed))
                 registeredPlayers.add(voicePacket.senderNameHashed);
 
-            if(config.muteAll() && !unmutedPlayers.contains(voicePacket.senderNameHashed))
+            if (config.muteAll() && !unmutedPlayers.contains(voicePacket.senderNameHashed))
                 return;
 
-            if(mutedPlayers.contains(voicePacket.senderNameHashed))
+            if (mutedPlayers.contains(voicePacket.senderNameHashed))
                 return;
 
             //Making sure player is in surrounding area
@@ -221,7 +208,7 @@ public class VoiceScapePlugin extends Plugin {
 
 
             if (isInSurroundingArea) {
-                if(System.currentTimeMillis() - voicePacket.timeCreated > config.maxPacketAge()) {
+                if (System.currentTimeMillis() - voicePacket.timeCreated > config.maxPacketAge()) {
                     droppingPacket = true;
                     return;
                 }
@@ -229,22 +216,19 @@ public class VoiceScapePlugin extends Plugin {
                 //Calculate volume based on distance
                 int distanceToSender = client.getLocalPlayer().getWorldLocation().distanceTo(sender.getWorldLocation());
                 float volume = 1 - ((float) distanceToSender / config.minDistance());
-                if(!playbackThreads.containsKey(voicePacket.senderNameHashed)) {
-                    playbackThreads.put(voicePacket.senderNameHashed, new VoicePlaybackThread(this,voicePacket.senderNameHashed));
+                if (!playbackThreads.containsKey(voicePacket.senderNameHashed)) {
+                    playbackThreads.put(voicePacket.senderNameHashed, new VoicePlaybackThread(this, voicePacket.senderNameHashed));
                 }
                 VoicePlaybackThread playbackThread = playbackThreads.get(voicePacket.senderNameHashed);
 
-                if(!config.altPlay()) {
+                if (!config.altPlay()) {
                     playbackThread.audioDataList.put(voicePacket.audioData, volume);
-                }
-                else {
+                } else {
                     playbackThread.audioDataList.clear();
-                    playbackThread.audioDataList.put(voicePacket.audioData, volume);
+                    playbackThread.playAudio(voicePacket.audioData, volume);
                 }
 
             }
-
-
 
 
         } catch (Exception e) {
@@ -270,8 +254,6 @@ public class VoiceScapePlugin extends Plugin {
             throw new RuntimeException(ex);
         }
     }
-
-
 
 
     @Provides

@@ -24,93 +24,74 @@
  */
 package de.furkan.voicescape;
 
+import lombok.extern.slf4j.Slf4j;
+import redis.clients.jedis.Jedis;
+
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import lombok.extern.slf4j.Slf4j;
-import redis.clients.jedis.Jedis;
-
 @Slf4j
-public class RedisPool
-{
+public class RedisPool {
     private final String redisHost;
     private final BlockingQueue<Jedis> queue;
 
-    RedisPool(int queueSize, String redisHost, int redisPort)
-    {
+    RedisPool(int queueSize, String redisHost, int redisPort) {
         this.redisHost = redisHost;
 
         queue = new ArrayBlockingQueue<>(queueSize);
-        for (int i = 0; i < queueSize; ++i)
-        {
+        for (int i = 0; i < queueSize; ++i) {
             Jedis jedis = new PooledJedis(redisHost, redisPort);
             queue.offer(jedis);
         }
     }
 
-    RedisPool(int queueSize, String redisHost, int redisPort, String username, String password)
-    {
+    RedisPool(int queueSize, String redisHost, int redisPort, String username, String password) {
         this.redisHost = redisHost;
 
         queue = new ArrayBlockingQueue<>(queueSize);
-        for (int i = 0; i < queueSize; ++i)
-        {
+        for (int i = 0; i < queueSize; ++i) {
             Jedis jedis = new PooledJedis(redisHost, redisPort, username, password);
             queue.offer(jedis);
         }
     }
 
-    public Jedis getResource()
-    {
+    public Jedis getResource() {
         Jedis jedis;
-        try
-        {
+        try {
             jedis = queue.poll(1, TimeUnit.SECONDS);
-        }
-        catch (InterruptedException e)
-        {
+        } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        if (jedis == null)
-        {
+        if (jedis == null) {
             throw new RuntimeException("Unable to acquire connection from pool, timeout");
         }
         return jedis;
     }
 
-    class PooledJedis extends Jedis
-    {
+    class PooledJedis extends Jedis {
 
 
-
-        PooledJedis(String host, int port)
-        {
+        PooledJedis(String host, int port) {
             super(host, port);
             super.ping();
         }
 
-        PooledJedis(String host, int port, String username, String password)
-        {
+        PooledJedis(String host, int port, String username, String password) {
             super(host, port);
             super.auth(username, password);
         }
 
         @Override
-        public void close()
-        {
-            if (!getClient().isBroken())
-            {
+        public void close() {
+            if (!getClient().isBroken()) {
                 queue.offer(this);
                 return;
             }
 
-            try
-            {
+            try {
                 super.close();
-            }
-            catch (Exception e)
-            {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
 
