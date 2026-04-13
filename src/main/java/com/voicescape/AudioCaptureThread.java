@@ -2,6 +2,7 @@ package com.voicescape;
 
 import io.github.jaredmdobson.concentus.OpusApplication;
 import io.github.jaredmdobson.concentus.OpusEncoder;
+import io.github.jaredmdobson.concentus.OpusException;
 import io.github.jaredmdobson.concentus.OpusSignal;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.sound.sampled.AudioSystem;
@@ -131,6 +132,8 @@ public class AudioCaptureThread extends Thread
 		{
 			try
 			{
+				if(line == null)
+					continue;
 				int bytesRead = line.read(buffer, 0, buffer.length);
 				if (bytesRead <= 0)
 				{
@@ -205,14 +208,7 @@ public class AudioCaptureThread extends Thread
 						try
 						{
 							byte[] silence = new byte[AudioDeviceManager.FRAME_SIZE_BYTES];
-							int enc = opusEncoder.encode(silence, 0, FRAME_SIZE_SAMPLES,
-								opusBuffer, 0, opusBuffer.length);
-							if (enc > 0)
-							{
-								byte[] payload = new byte[enc];
-								System.arraycopy(opusBuffer, 0, payload, 0, enc);
-								networkClient.sendAudioFrame(networkClient.nextSequenceNumber(), payload);
-							}
+							encodeAndSend(opusBuffer, silence);
 						}
 						catch (Exception e)
 						{
@@ -269,14 +265,7 @@ public class AudioCaptureThread extends Thread
 						{
 							try
 							{
-								int enc = opusEncoder.encode(prerollPcm, 0, FRAME_SIZE_SAMPLES,
-									opusBuffer, 0, opusBuffer.length);
-								if (enc > 0)
-								{
-									byte[] payload = new byte[enc];
-									System.arraycopy(opusBuffer, 0, payload, 0, enc);
-									networkClient.sendAudioFrame(networkClient.nextSequenceNumber(), payload);
-								}
+								encodeAndSend(opusBuffer, prerollPcm);
 							}
 							catch (Exception e)
 							{
@@ -319,6 +308,17 @@ public class AudioCaptureThread extends Thread
 		}
 
 		closeLine();
+	}
+
+	private void encodeAndSend(byte[] opusBuffer, byte[] silence) throws OpusException {
+		int enc = opusEncoder.encode(silence, 0, FRAME_SIZE_SAMPLES,
+			opusBuffer, 0, opusBuffer.length);
+		if (enc > 0)
+		{
+			byte[] payload = new byte[enc];
+			System.arraycopy(opusBuffer, 0, payload, 0, enc);
+			networkClient.sendAudioFrame(networkClient.nextSequenceNumber(), payload);
+		}
 	}
 
 	public void shutdown()

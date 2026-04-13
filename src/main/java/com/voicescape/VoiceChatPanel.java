@@ -58,7 +58,7 @@ public class VoiceChatPanel extends PluginPanel
 
 	private final JButton connectButton = new JButton("Connect");
 	private final JCheckBox autoConnectCheck = new JCheckBox("Auto-connect");
-
+	private final JCheckBox muteAllCheck = new JCheckBox("Mute all default");
 
 	private final JPanel playersListPanel = new JPanel(new GridBagLayout());
 	private final JLabel statusLabel = new JLabel("Not connected");
@@ -82,7 +82,7 @@ public class VoiceChatPanel extends PluginPanel
 	private final JLabel               vadLabel         = buildLabel(" Sensitivity (lower = more sensitive)");
 	private final JSlider              rangeSlider      = new JSlider(1, 15);
 	private final JCheckBox            mutedCheck       = new JCheckBox("Mute microphone");
-	private final JCheckBox            deafenedCheck    = new JCheckBox("Deafen (mute incoming)");
+	private final JCheckBox            deafenedCheck    = new JCheckBox("Deafen");
 
 	// Audio levels
 	private final JSlider micGainSlider   = new JSlider(0, 200);
@@ -280,11 +280,18 @@ public class VoiceChatPanel extends PluginPanel
 		JButton resetButton = buildButton("Reset All Settings to Defaults", e -> resetAllSettings());
 		resetButton.setForeground(new Color(220, 50, 50));
 		content.add(resetButton, c); c.gridy++;
-
 		content.add(buildDivider(), c); c.gridy++;
 
-		// ── Nearby Players ───────────────────────────────────────
-		content.add(buildSectionHeader("Nearby Players"), c); c.gridy++;
+
+		content.add(buildSectionHeader("Mute Players"), c); c.gridy++;
+
+		styleCheckBox(muteAllCheck);
+		muteAllCheck.setToolTipText("Automatically mute all players and unmute them manually");
+		muteAllCheck.setSelected(Boolean.parseBoolean(cfg("muteAll", "false")));
+		muteAllCheck.addActionListener(e -> save("muteAll", String.valueOf(muteAllCheck.isSelected())));
+		content.add(muteAllCheck, c); c.gridy++;
+
+		content.add(buildDivider(), c); c.gridy++;
 		playersListPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		content.add(playersListPanel, c); c.gridy++;
 
@@ -413,10 +420,12 @@ public class VoiceChatPanel extends PluginPanel
 						boolean nowMuted = pm.isPlayerMuted(hash);
 						if (nowMuted)
 						{
+							pm.getUnmutedDefaultHashes().add(hash);
 							pm.unmutePlayer(hash);
 						}
 						else
 						{
+							pm.getUnmutedDefaultHashes().remove(hash);
 							pm.mutePlayer(hash);
 						}
 						// Update button in place — list refreshes on next game tick
@@ -452,7 +461,7 @@ public class VoiceChatPanel extends PluginPanel
 		save("serverAddress", DEFAULT_SERVER_ADDRESS);
 		save("autoConnect", "false");
 		save("voiceMode", VoiceMode.PUSH_TO_TALK.name());
-		save("pushToTalkKey", KeyEvent.VK_V + ":0");
+		save("pushToTalkKey", KeyEvent.VK_V + ":"+KeyEvent.CTRL_DOWN_MASK);
 		save("vadSensitivity", "30");
 		save("voiceRange", "15");
 		save("muted", "false");
@@ -468,8 +477,8 @@ public class VoiceChatPanel extends PluginPanel
 		serverAddressField.setText(DEFAULT_SERVER_ADDRESS);
 		autoConnectCheck.setSelected(false);
 		voiceModeCombo.setSelectedItem(VoiceMode.PUSH_TO_TALK);
-		capturedKeybind = new Keybind(KeyEvent.VK_V, 0);
-		pttKeyField.setText(keybindDisplayName(KeyEvent.VK_V, 0));
+		capturedKeybind = new Keybind(KeyEvent.VK_V, KeyEvent.CTRL_DOWN_MASK);
+		pttKeyField.setText(keybindDisplayName(KeyEvent.VK_V, KeyEvent.CTRL_DOWN_MASK));
 		vadSlider.setValue(30);
 		rangeSlider.setValue(15);
 		mutedCheck.setSelected(false);
@@ -480,6 +489,7 @@ public class VoiceChatPanel extends PluginPanel
 		outputVolSlider.setValue(100);
 		showOverlayCheck.setSelected(true);
 		localLoopbackCheck.setSelected(false);
+		muteAllCheck.setSelected(false);
 		updateVoiceModeVisibility(VoiceMode.PUSH_TO_TALK);
 	}
 
@@ -576,8 +586,8 @@ public class VoiceChatPanel extends PluginPanel
 					pttKeyField.transferFocus();
 					return;
 				}
-				// Ignore modifier-only keys (Ctrl, Shift, Alt) — wait for the actual key
-				if (code == KeyEvent.VK_CONTROL || code == KeyEvent.VK_SHIFT
+
+				if (code == KeyEvent.CTRL_DOWN_MASK || code == KeyEvent.VK_SHIFT
 					|| code == KeyEvent.VK_ALT || code == KeyEvent.VK_META)
 				{
 					return;
@@ -612,8 +622,7 @@ public class VoiceChatPanel extends PluginPanel
 			}
 			catch (Exception ignored) {}
 		}
-		// Default: V
-		return new Keybind(KeyEvent.VK_V, 0);
+		return new Keybind(KeyEvent.VK_V, KeyEvent.CTRL_DOWN_MASK);
 	}
 
 	private void buildVadRow()

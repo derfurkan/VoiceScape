@@ -17,7 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class AudioPlaybackManager extends Thread {
-	private static final int MAX_CONCURRENT_SENDERS = 50;
+	private static final int MAX_CONCURRENT_SENDERS = 10;
 	private static final int MAX_SPEAKERS = 50;
 	private static final int FRAME_SIZE_SAMPLES = AudioDeviceManager.FRAME_SIZE_BYTES / 2;
 
@@ -28,6 +28,10 @@ public class AudioPlaybackManager extends Thread {
 	private final Set<String> activeSpeakers = ConcurrentHashMap.newKeySet();
 	@Getter
 	private final Set<String> mutedHashes = ConcurrentHashMap.newKeySet();
+	@Getter
+	private final Set<String> mutedDefaultHashes = ConcurrentHashMap.newKeySet();
+	@Getter
+	private final Set<String> unmutedDefaultHashes = ConcurrentHashMap.newKeySet();
 	private volatile Map<String, Integer> nearbyDistances = Collections.emptyMap();
 	private SourceDataLine line;
 
@@ -44,6 +48,10 @@ public class AudioPlaybackManager extends Thread {
 		}
 	}
 
+	public void mutePlayerDefault(String hash) {
+		mutedHashes.add(hash);
+	}
+
 	public void mutePlayer(String hash) {
 		mutedHashes.add(hash);
 	}
@@ -53,7 +61,7 @@ public class AudioPlaybackManager extends Thread {
 	}
 
 	public boolean isPlayerMuted(String hash) {
-		return mutedHashes.contains(hash);
+		return mutedHashes.contains(hash) || mutedDefaultHashes.contains(hash);
 	}
 
 
@@ -91,11 +99,7 @@ public class AudioPlaybackManager extends Thread {
 			return;
 		}
 
-		SpeakerState state = speakers.computeIfAbsent(senderIdentityHash, k -> {
-			log.info("[PLAYBACK] New speaker appeared: {}",
-					senderIdentityHash.substring(0, Math.min(8, senderIdentityHash.length())));
-			return new SpeakerState();
-		});
+		SpeakerState state = speakers.computeIfAbsent(senderIdentityHash, k -> new SpeakerState());
 
 		state.jitterBuffer.put(sequenceNumber, opusPayload);
 		state.lastReceiveTime = System.currentTimeMillis();

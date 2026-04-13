@@ -1,13 +1,13 @@
 package com.voicescape;
 
 import com.google.inject.Provides;
-import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.imageio.ImageIO;
 import javax.inject.Inject;
 
 import lombok.Getter;
@@ -82,7 +82,11 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 		captureThread = new AudioCaptureThread(config, networkClient, playbackManager);
 
 		panel = new VoiceChatPanel(configManager, config.inputDevice(), config.outputDevice());
-		panel.setOnConnect(this::connectToServer);
+		panel.setOnConnect(() -> {
+			manuallyDisconnect = false;
+			connectToServer();
+		});
+
 		panel.setOnDisconnect(() -> {
 			if (networkClient != null) {
 				manuallyDisconnect = true;
@@ -95,7 +99,7 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 
 		navButton = NavigationButton.builder()
 				.tooltip("VoiceScape")
-				.icon(new BufferedImage(48,72,BufferedImage.TYPE_INT_RGB)) // For now
+				.icon(ImageIO.read(getClass().getResourceAsStream("/icon.png"))) // For now
 				.priority(10)
 				.panel(panel)
 				.build();
@@ -135,6 +139,7 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 		if (event.getGameState() == GameState.LOGGED_IN) {
 			panel.setConnectButtonState(true);
 		} else if (event.getGameState() == GameState.LOGIN_SCREEN) {
+			manuallyDisconnect = false;
 			panel.setConnectButtonState(false);
 			networkClient.disconnect();
 		}
@@ -198,6 +203,7 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 		hadNearbyPlayers = hasNearby;
 
 
+
 		Set<String> activeSpeakers = getActiveSpeakerHashes();
 		Set<String> mutedHashes = playbackManager.getMutedHashes();
 		Map<String, String> speakerNames = new HashMap<>();
@@ -207,6 +213,9 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 			}
 			String hash = HashUtil.hmac(dailyKey, player.getName());
 			if (activeSpeakers.contains(hash) || mutedHashes.contains(hash)) {
+				if(config.muteAll() && !playbackManager.getUnmutedDefaultHashes().contains(hash)) {
+					playbackManager.mutePlayerDefault(hash);
+				}
 				speakerNames.put(player.getName(), hash);
 			}
 		}
@@ -265,27 +274,6 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 		return networkClient == null ? null : networkClient.getCurrentDailyKey();
 	}
 
-	public Map<String, String> getNearbyPlayerHashes() {
-		byte[] dailyKey = getCurrentDailyKey();
-		if (dailyKey == null || client.getLocalPlayer() == null) {
-			return Collections.emptyMap();
-		}
-
-		Map<String, String> result = new HashMap<>();
-		for (Player player : client.getTopLevelWorldView().players()) {
-			WorldPoint playerPos = player.getWorldLocation();
-			WorldPoint localPos = client.getLocalPlayer().getWorldLocation();
-			if (player.getName() == null || player == client.getLocalPlayer() || playerPos.getPlane() != localPos.getPlane()) {
-				continue;
-			}
-
-			int distance = localPos.distanceTo(playerPos);
-			if (distance <= config.voiceRange()) {
-				result.put(player.getName(), HashUtil.hmac(dailyKey, player.getName()));
-			}
-		}
-		return result;
-	}
 
 	private void connectToServer() {
 		Player localPlayer = client.getLocalPlayer();

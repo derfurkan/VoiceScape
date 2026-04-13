@@ -33,7 +33,7 @@ public interface VoiceChatConfig extends Config
 	@ConfigItem(keyName = "pushToTalkKey", name = "", description = "", hidden = true)
 	default Keybind pushToTalkKey()
 	{
-		return new Keybind(KeyEvent.VK_V, 0);
+		return new Keybind(KeyEvent.VK_V, KeyEvent.CTRL_DOWN_MASK);
 	}
 
 	@ConfigItem(keyName = "vadSensitivity", name = "", description = "", hidden = true)
@@ -96,6 +96,12 @@ public interface VoiceChatConfig extends Config
 
 	@ConfigItem(keyName = "localLoopback", name = "", description = "", hidden = true)
 	default boolean localLoopback()
+	{
+		return false;
+	}
+
+	@ConfigItem(keyName = "muteAll", name = "", description = "", hidden = true)
+	default boolean muteAll()
 	{
 		return false;
 	}

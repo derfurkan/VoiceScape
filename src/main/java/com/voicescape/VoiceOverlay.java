@@ -42,7 +42,7 @@ public class VoiceOverlay extends Overlay
 			return null;
 		}
 
-		if (plugin.isLocalPlayerTransmitting())
+		if (plugin.isLocalPlayerTransmitting() && (plugin.getNetworkClient().isConnected() || config.localLoopback()))
 		{
 			Player local = client.getLocalPlayer();
 			if (local != null)
