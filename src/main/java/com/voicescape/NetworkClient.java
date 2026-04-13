@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -41,7 +42,7 @@ public class NetworkClient
 	private static final long UDP_REGISTER_INTERVAL_MS = 30_000;
 	private static final long HEARTBEAT_INTERVAL_MS = 10_000;
 	private static final long RECONNECT_DELAY_MS = 5_000;
-	private static final long HANDSHAKE_TIMEOUT_MS = 5_000;
+	private static final long HANDSHAKE_TIMEOUT_MS = 20_000;
 
 	private final VoiceChatConfig config;
 	private final AudioPlaybackManager playbackManager;
@@ -69,7 +70,8 @@ public class NetworkClient
 	private Thread heartbeatThread;
 	private Thread udpReceiveThread;
 
-	private volatile Consumer<String> statusListener;
+	@Setter
+    private volatile Consumer<String> statusListener;
 
 	public NetworkClient(VoiceChatConfig config, AudioPlaybackManager playbackManager)
 	{
@@ -77,12 +79,7 @@ public class NetworkClient
 		this.playbackManager = playbackManager;
 	}
 
-	public void setStatusListener(Consumer<String> listener)
-	{
-		this.statusListener = listener;
-	}
-
-	private void reportStatus(String message)
+    private void reportStatus(String message)
 	{
 		Consumer<String> l = statusListener;
 		if (l != null)
@@ -343,32 +340,28 @@ public class NetworkClient
 		return new DataInputStream(new java.io.ByteArrayInputStream(buf));
 	}
 
-	// ── Send ────────────────────────────────────────────────────
-
 	private synchronized void sendHello() throws IOException
 	{
 		byte[] sessionIdBytes = sessionId.getBytes(StandardCharsets.UTF_8);
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		DataOutputStream msg = new DataOutputStream(baos);
+		ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+		DataOutputStream msg = new DataOutputStream(byteArrayOutputStream);
 		msg.writeByte(MSG_HELLO);
 		msg.writeInt(PROTOCOL_VERSION);
 		msg.writeShort(sessionIdBytes.length);
 		msg.write(sessionIdBytes);
-		writeFramed(out, baos.toByteArray());
+		writeFramed(out, byteArrayOutputStream.toByteArray());
 	}
 
 	private synchronized void sendIdentity(String identityHash) throws IOException
 	{
 		byte[] hashBytes = identityHash.getBytes(StandardCharsets.UTF_8);
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		DataOutputStream msg = new DataOutputStream(baos);
+		ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+		DataOutputStream msg = new DataOutputStream(byteArrayOutputStream);
 		msg.writeByte(MSG_IDENTITY);
 		msg.writeShort(hashBytes.length);
 		msg.write(hashBytes);
-		writeFramed(out, baos.toByteArray());
+		writeFramed(out, byteArrayOutputStream.toByteArray());
 	}
-
-	// ── Receive ─────────────────────────────────────────────────
 
 	private void readHelloAck() throws IOException
 	{
@@ -385,7 +378,6 @@ public class NetworkClient
 				byte[] errBytes = new byte[errLen];
 				msg.readFully(errBytes);
 				String errorMsg = new String(errBytes, StandardCharsets.UTF_8);
-				log.warn("Server error: {}", errorMsg);
 				reportStatus(errorMsg);
 				throw new IOException("Server rejected connection: " + errorMsg);
 		} else if(type != (MSG_HELLO_ACK & 0xFF)) {
@@ -452,8 +444,7 @@ public class NetworkClient
 				byte[] errBytes = new byte[errLen];
 				msg.readFully(errBytes);
 				String errorMsg = new String(errBytes, StandardCharsets.UTF_8);
-				log.warn("Server error: {}", errorMsg);
-				reportStatus("Server: " + errorMsg);
+				reportStatus(errorMsg);
 				break;
 
 			default:
@@ -529,8 +520,6 @@ public class NetworkClient
 		in = null;
 	}
 
-	// ── UDP audio channel ──────────────────────────────────────
-
 	private void openUdpChannel(String host, int port)
 	{
 		try
@@ -588,6 +577,7 @@ public class NetworkClient
 				{
 					DatagramPacket packet = new DatagramPacket(buf, buf.length);
 					udpSocket.receive(packet);
+					log.debug("Received UDP Packet");
 					handleUdpPacket(buf, packet.getLength());
 				}
 				catch (SocketException e)

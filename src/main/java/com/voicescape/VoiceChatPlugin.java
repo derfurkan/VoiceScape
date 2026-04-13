@@ -28,7 +28,6 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
-import net.runelite.client.util.ImageUtil;
 
 @Slf4j
 @PluginDescriptor(name = "VoiceScape", description = "Proximity-based voice chat for OSRS", tags = { "voice", "chat",
@@ -57,11 +56,8 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 	@Inject
 	private VoiceOverlay voiceOverlay;
 
+	@Getter
 	private NetworkClient networkClient;
-
-	public NetworkClient getNetworkClient() {
-		return networkClient;
-	}
 
 	@Getter
 	private AudioCaptureThread captureThread;
@@ -86,12 +82,7 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 		captureThread = new AudioCaptureThread(config, networkClient, playbackManager);
 
 		panel = new VoiceChatPanel(configManager, config.inputDevice(), config.outputDevice());
-		panel.setOnConnect(() -> {
-			if (config.autoConnect()) {
-				manuallyDisconnect = false;
-			}
-			connectToServer();
-		});
+		panel.setOnConnect(this::connectToServer);
 		panel.setOnDisconnect(() -> {
 			if (networkClient != null) {
 				manuallyDisconnect = true;
@@ -104,7 +95,7 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 
 		navButton = NavigationButton.builder()
 				.tooltip("VoiceScape")
-				.icon(new BufferedImage(48,72,BufferedImage.TYPE_INT_RGB))
+				.icon(new BufferedImage(48,72,BufferedImage.TYPE_INT_RGB)) // For now
 				.priority(10)
 				.panel(panel)
 				.build();
@@ -142,15 +133,16 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event) {
 		if (event.getGameState() == GameState.LOGGED_IN) {
-			panel.getConnectButton().setEnabled(true);
+			panel.setConnectButtonState(true);
 		} else if (event.getGameState() == GameState.LOGIN_SCREEN) {
-			panel.getConnectButton().setEnabled(false);
+			panel.setConnectButtonState(false);
+			networkClient.disconnect();
 		}
 	}
 
 	@Subscribe
 	public void onGameTick(GameTick event) {
-		if (config.autoConnect() && !networkClient.getRunning().get() && manuallyDisconnect == false) {
+		if (config.autoConnect() && !networkClient.getRunning().get() && !manuallyDisconnect) {
 			Player lp = client.getLocalPlayer();
 			if (lp != null && lp.getName() != null) {
 				connectToServer();
@@ -283,8 +275,7 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 		for (Player player : client.getTopLevelWorldView().players()) {
 			WorldPoint playerPos = player.getWorldLocation();
 			WorldPoint localPos = client.getLocalPlayer().getWorldLocation();
-			if (player == null || player.getName() == null || player == client.getLocalPlayer()
-					|| playerPos.getPlane() != localPos.getPlane()) {
+			if (player.getName() == null || player == client.getLocalPlayer() || playerPos.getPlane() != localPos.getPlane()) {
 				continue;
 			}
 
@@ -301,7 +292,6 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 		if (localPlayer == null || localPlayer.getName() == null) {
 			return;
 		}
-
 		networkClient.connect(localPlayer.getName());
 	}
 

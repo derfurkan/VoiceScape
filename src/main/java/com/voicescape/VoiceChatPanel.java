@@ -56,14 +56,13 @@ public class VoiceChatPanel extends PluginPanel
 	@Setter
 	private VoiceChatPlugin plugin;
 
-	@Getter
 	private final JButton connectButton = new JButton("Connect");
 	private final JCheckBox autoConnectCheck = new JCheckBox("Auto-connect");
 
 
 	private final JPanel playersListPanel = new JPanel(new GridBagLayout());
 	private final JLabel statusLabel = new JLabel("Not connected");
-	private volatile boolean loggedIn = false;
+	private final boolean loggedIn = false;
 
 	// Audio devices
 	private final JComboBox<String> inputDeviceCombo  = new JComboBox<>();
@@ -181,29 +180,23 @@ public class VoiceChatPanel extends PluginPanel
 		connectButton.addActionListener(e ->
 		{
 			String text = connectButton.getText();
-			if ("Disconnect".equals(text))
+			if (text.equals("Disconnect") || text.equals("Connecting..."))
 			{
-				if (onDisconnect != null) onDisconnect.run();
-				setConnected(false);
-			}
-			else if ("Connecting...".equals(text))
-			{
-				// Cancel in-progress connection
-				if (onDisconnect != null) onDisconnect.run();
-				setConnected(false);
+				connectButton.setText("Connect");
+				connectButton.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+				if (onDisconnect != null)
+					onDisconnect.run();
 			}
 			else
 			{
-				// "Connect" clicked — show connecting state, don't flip to Disconnect yet
 				connectButton.setText("Connecting...");
 				connectButton.setForeground(new Color(255, 165, 0));
-				connectButton.setEnabled(true);
-				if (onConnect != null) onConnect.run();
+				if (onConnect != null)
+					onConnect.run();
 			}
 		});
 		content.add(connectButton, c); c.gridy++;
 
-		// Auto-connect checkbox
 		styleCheckBox(autoConnectCheck);
 		autoConnectCheck.setToolTipText("Automatically connect to the server when logging in");
 		autoConnectCheck.setSelected(Boolean.parseBoolean(cfg("autoConnect", "false")));
@@ -337,62 +330,33 @@ public class VoiceChatPanel extends PluginPanel
 		updateVoiceModeVisibility((VoiceMode) voiceModeCombo.getSelectedItem());
 	}
 
-	// ── Public API ───────────────────────────────────────────────
-
-	public void setConnected(boolean connected)
-	{
-		SwingUtilities.invokeLater(() ->
-		{
-			connectButton.setText(connected ? "Disconnect" : "Connect");
-			connectButton.setForeground(connected ? new Color(220, 50, 50) : ColorScheme.LIGHT_GRAY_COLOR);
-			connectButton.setEnabled(connected || loggedIn);
+	public void setConnectButtonState(boolean enabled) {
+		SwingUtilities.invokeLater(() -> {
+			connectButton.setEnabled(enabled);
+			if(!enabled) {
+				connectButton.setText("Connect");
+				connectButton.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			}
 		});
 	}
-
 
 	public void setStatusMessage(String message)
 	{
 		SwingUtilities.invokeLater(() ->
 		{
 			statusLabel.setText(message);
-			if (message.startsWith("Connected"))
-			{
-				statusLabel.setForeground(new Color(0, 200, 83));
-				// Now actually flip the button to Disconnect
+			if (message.startsWith("Connected")) {
+				connectButton.setForeground(new Color(255,0,0));
 				connectButton.setText("Disconnect");
-				connectButton.setForeground(new Color(220, 50, 50));
-				connectButton.setEnabled(true);
-			}
-			else if (message.startsWith("Connection failed") || message.startsWith("Server:"))
-			{
-				statusLabel.setForeground(new Color(220, 50, 50));
-				// Connection failed — revert button to Connect
-				connectButton.setText("Connect");
-				connectButton.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-				connectButton.setEnabled(loggedIn);
-			}
-			else if (message.startsWith("Connecting"))
-			{
+				statusLabel.setForeground(new Color(0, 200, 83));
+			} else if (message.startsWith("Connecting")) {
 				statusLabel.setForeground(new Color(255, 165, 0));
-			}
-			else if (message.startsWith("Disconnected"))
-			{
-				statusLabel.setForeground(new Color(180, 180, 180));
-				connectButton.setText("Connect");
-				connectButton.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-				connectButton.setEnabled(loggedIn);
-			}
-			else
-			{
+			} else {
 				statusLabel.setForeground(new Color(180, 180, 180));
 			}
 		});
 	}
 
-	/**
-	 * Called periodically (e.g. every game tick) to refresh the nearby players list
-	 * with mute/unmute buttons.
-	 */
 	public void updatePlayerList(Map<String, String> nameToHash)
 	{
 		SwingUtilities.invokeLater(() ->
