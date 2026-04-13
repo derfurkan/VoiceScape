@@ -89,8 +89,8 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 		panel.setOnConnect(() -> {
 			if (config.autoConnect()) {
 				manuallyDisconnect = false;
-				connectToServer();
 			}
+			connectToServer();
 		});
 		panel.setOnDisconnect(() -> {
 			if (networkClient != null) {
@@ -104,6 +104,7 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 
 		navButton = NavigationButton.builder()
 				.tooltip("VoiceScape")
+				.icon(new BufferedImage(48,72,BufferedImage.TYPE_INT_RGB))
 				.priority(10)
 				.panel(panel)
 				.build();

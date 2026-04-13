@@ -17,7 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class AudioPlaybackManager extends Thread {
-	private static final int MAX_CONCURRENT_SENDERS = 10;
+	private static final int MAX_CONCURRENT_SENDERS = 50;
 	private static final int MAX_SPEAKERS = 50;
 	private static final int FRAME_SIZE_SAMPLES = AudioDeviceManager.FRAME_SIZE_BYTES / 2;
 
