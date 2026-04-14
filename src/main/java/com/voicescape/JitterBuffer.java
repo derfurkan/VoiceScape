@@ -8,7 +8,7 @@ public class JitterBuffer
 	private static final int BUFFER_SIZE = 16;
 	private static final int MASK = BUFFER_SIZE - 1;
 
-	private static final int PREBUFFER_FRAMES = 2;
+	private static final int PREBUFFER_FRAMES = 3;
 
 	private final byte[][] slots = new byte[BUFFER_SIZE][];
 	private final boolean[] occupied = new boolean[BUFFER_SIZE];
@@ -100,7 +100,7 @@ public class JitterBuffer
 		if (nextReadSeq < maxReceivedSeq)
 		{
 			nextReadSeq++;
-			return null; // PLC
+			return null;
 		}
 		return null;
 	}

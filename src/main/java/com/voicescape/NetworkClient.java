@@ -42,7 +42,7 @@ public class NetworkClient
 	private static final long UDP_REGISTER_INTERVAL_MS = 30_000;
 	private static final long HEARTBEAT_INTERVAL_MS = 10_000;
 	private static final long RECONNECT_DELAY_MS = 5_000;
-	private static final long HANDSHAKE_TIMEOUT_MS = 20_000;
+	private static final long HANDSHAKE_TIMEOUT_MS = 10_000;
 
 	private final VoiceChatConfig config;
 	private final AudioPlaybackManager playbackManager;
@@ -145,11 +145,11 @@ public class NetworkClient
 
 		try
 		{
-			int limit = Math.min(nearbyHashes.size(), 200);
+			int limit = Math.min(nearbyHashes.size(), 50);
 			ByteArrayOutputStream entries = new ByteArrayOutputStream();
 			DataOutputStream entryWriter = new DataOutputStream(entries);
 			int count = 0;
-			for (int i = 0; i < limit && count < 200; i++)
+			for (int i = 0; i < limit && count < limit; i++)
 			{
 				byte[] hashBytes = nearbyHashes.get(i).getBytes(StandardCharsets.UTF_8);
 				if (hashBytes.length > 255)
@@ -396,7 +396,7 @@ public class NetworkClient
 		int keyLen = msg.readUnsignedShort();
 		if (keyLen > 64)
 		{
-			throw new IOException("Daily key too long: " + keyLen);
+			throw new IOException("Key too long: " + keyLen);
 		}
 		byte[] key = new byte[keyLen];
 		msg.readFully(key);
@@ -429,7 +429,7 @@ public class NetworkClient
 				byte[] newKey = new byte[keyLen];
 				msg.readFully(newKey);
 				currentDailyKey = newKey;
-				log.debug("Daily key rotated");
+				log.debug("Key rotated");
 
 
 				sendIdentity(computeIdentityHash());
@@ -518,6 +518,8 @@ public class NetworkClient
 		socket = null;
 		out = null;
 		in = null;
+		playbackManager.flushLine();
+
 	}
 
 	private void openUdpChannel(String host, int port)

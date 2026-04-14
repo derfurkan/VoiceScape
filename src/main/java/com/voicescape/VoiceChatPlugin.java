@@ -99,8 +99,7 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 
 		navButton = NavigationButton.builder()
 				.tooltip("VoiceScape")
-				.icon(ImageIO.read(getClass().getResourceAsStream("/icon.png"))) // For now
-				.priority(10)
+				.icon(ImageIO.read(getClass().getResourceAsStream("/icon.png")))
 				.panel(panel)
 				.build();
 
@@ -146,22 +145,21 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 	}
 
 	@Subscribe
-	public void onGameTick(GameTick event) {
+	public void onGameTick(GameTick gameTick) {
+		Player localPlayer = client.getLocalPlayer();
 		if (config.autoConnect() && !networkClient.getRunning().get() && !manuallyDisconnect) {
-			Player lp = client.getLocalPlayer();
-			if (lp != null && lp.getName() != null) {
+			if (localPlayer != null && localPlayer.getName() != null) {
 				connectToServer();
 			}
 		}
 
 		tickCounter++;
-		if (tickCounter < HASH_UPDATE_INTERVAL_TICKS) {
+		if (tickCounter < HASH_UPDATE_INTERVAL_TICKS && networkClient.isConnected()) {
 			return;
 		}
 		tickCounter = 0;
 
 		byte[] dailyKey = networkClient.getCurrentDailyKey();
-		Player localPlayer = client.getLocalPlayer();
 		if (!networkClient.isConnected() || dailyKey == null || localPlayer == null) {
 			return;
 		}
@@ -201,8 +199,6 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 			networkClient.sendHashListUpdate(nearbyHashes);
 		}
 		hadNearbyPlayers = hasNearby;
-
-
 
 		Set<String> activeSpeakers = getActiveSpeakerHashes();
 		Set<String> mutedHashes = playbackManager.getMutedHashes();

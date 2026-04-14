@@ -17,8 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class AudioPlaybackManager extends Thread {
-	private static final int MAX_CONCURRENT_SENDERS = 10;
-	private static final int MAX_SPEAKERS = 50;
+	private static final int MAX_SPEAKERS = 10;
 	private static final int FRAME_SIZE_SAMPLES = AudioDeviceManager.FRAME_SIZE_BYTES / 2;
 
 	private final VoiceChatConfig config;
@@ -153,10 +152,6 @@ public class AudioPlaybackManager extends Thread {
 
 				long now = System.currentTimeMillis();
 				for (Map.Entry<String, SpeakerState> entry : speakers.entrySet()) {
-					if (senderCount >= MAX_CONCURRENT_SENDERS) {
-						break;
-					}
-
 					SpeakerState state = entry.getValue();
 
 					if (now - state.lastReceiveTime > 500) {

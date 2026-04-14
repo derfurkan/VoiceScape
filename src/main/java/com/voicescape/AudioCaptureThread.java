@@ -9,6 +9,9 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.TargetDataLine;
+
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -19,16 +22,19 @@ public class AudioCaptureThread extends Thread
 	private final AudioPlaybackManager playbackManager;
 	private final AtomicBoolean running = new AtomicBoolean(false);
 	private static final int FRAME_SIZE_SAMPLES = AudioDeviceManager.FRAME_SIZE_BYTES / 2;
-	private static final int OPUS_BITRATE = 24000; // 24 kbps — good quality for voice
+	private static final int OPUS_BITRATE = 24000;
 
 	private static final int VAD_HANGOVER_FRAMES = 30;
 	private static final int VAD_PREROLL_FRAMES = 10;
 
 	private static final int TAIL_SILENCE_FRAMES = 5;
 
-	private volatile boolean pttActive = false;
-	private volatile boolean transmitting = false;
-	private volatile boolean hasNearbyPlayers = false;
+	@Setter
+    private volatile boolean pttActive = false;
+	@Getter
+    private volatile boolean transmitting = false;
+	@Setter
+    private volatile boolean hasNearbyPlayers = false;
 	private boolean wasTransmitting = false;
 	private int vadHangoverRemaining = 0;
 	private int tailSilenceRemaining = 0;
@@ -47,22 +53,7 @@ public class AudioCaptureThread extends Thread
 		this.playbackManager = playbackManager;
 	}
 
-	public void setPttActive(boolean active)
-	{
-		this.pttActive = active;
-	}
-
-	public void setHasNearbyPlayers(boolean hasNearby)
-	{
-		this.hasNearbyPlayers = hasNearby;
-	}
-
-	public boolean isTransmitting()
-	{
-		return transmitting;
-	}
-
-	public void openLine()
+    public void openLine()
 	{
 		try
 		{
