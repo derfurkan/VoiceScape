@@ -1,37 +1,5 @@
 package com.voicescape;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.awt.Rectangle;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.util.Dictionary;
-import java.util.Hashtable;
-import java.util.Map;
-import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSlider;
-import javax.swing.JTextField;
-import javax.swing.Scrollable;
-import javax.swing.ScrollPaneConstants;
-import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
-import javax.swing.border.CompoundBorder;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.MatteBorder;
-
-import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.ConfigManager;
@@ -39,6 +7,19 @@ import net.runelite.client.config.Keybind;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
+
+import javax.swing.*;
+import javax.swing.border.CompoundBorder;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.MatteBorder;
+import java.awt.*;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.Dictionary;
+import java.util.Hashtable;
+import java.util.Map;
 
 @Slf4j
 public class VoiceChatPanel extends PluginPanel
@@ -62,9 +43,8 @@ public class VoiceChatPanel extends PluginPanel
 
 	private final JPanel playersListPanel = new JPanel(new GridBagLayout());
 	private final JLabel statusLabel = new JLabel("Not connected");
-	private final boolean loggedIn = false;
 
-	// Audio devices
+    // Audio devices
 	private final JComboBox<String> inputDeviceCombo  = new JComboBox<>();
 	private final JComboBox<String> outputDeviceCombo = new JComboBox<>();
 
@@ -104,7 +84,6 @@ public class VoiceChatPanel extends PluginPanel
 
 		// Content panel implements Scrollable so the viewport forces it to our width,
 		// preventing any component (e.g. wide JComboBox) from making the panel overflow.
-		@SuppressWarnings("serial")
 		class ScrollablePanel extends JPanel implements Scrollable
 		{
 			ScrollablePanel() { super(new GridBagLayout()); }
@@ -132,7 +111,7 @@ public class VoiceChatPanel extends PluginPanel
 		content.add(buildLabel("Input Device"), c); c.gridy++;
 		populateCombo(inputDeviceCombo, AudioDeviceManager.getInputDevices(), currentInput);
 		inputDeviceCombo.addActionListener(e -> {
-			save("inputDevice", getSelectedDevice(inputDeviceCombo));
+			saveToConfig("inputDevice", getSelectedDevice(inputDeviceCombo));
 
 			plugin.getCaptureThread().closeLine();
 			plugin.getCaptureThread().openLine();
@@ -142,7 +121,7 @@ public class VoiceChatPanel extends PluginPanel
 		content.add(buildLabel("Output Device"), c); c.gridy++;
 		populateCombo(outputDeviceCombo, AudioDeviceManager.getOutputDevices(), currentOutput);
 		outputDeviceCombo.addActionListener(e -> {
-			save("outputDevice", getSelectedDevice(outputDeviceCombo));
+			saveToConfig("outputDevice", getSelectedDevice(outputDeviceCombo));
 			plugin.getPlaybackManager().closeLine();
 			plugin.getPlaybackManager().openLine();
 		});
@@ -156,14 +135,14 @@ public class VoiceChatPanel extends PluginPanel
 		content.add(buildSectionHeader("Connection"), c); c.gridy++;
 
 		content.add(buildLabel("Server Address (host:port)"), c); c.gridy++;
-		serverAddressField.setText(cfg("serverAddress", "voicescape.example.com:5555"));
+		serverAddressField.setText(readFromConfig("serverAddress"));
 		styleTextField(serverAddressField);
-		serverAddressField.addActionListener(e -> save("serverAddress", serverAddressField.getText().trim()));
+		serverAddressField.addActionListener(e -> saveToConfig("serverAddress", serverAddressField.getText().trim()));
 		serverAddressField.addFocusListener(new java.awt.event.FocusAdapter()
 		{
 			@Override public void focusLost(java.awt.event.FocusEvent e)
 			{
-				save("serverAddress", serverAddressField.getText().trim());
+				saveToConfig("serverAddress", serverAddressField.getText().trim());
 			}
 		});
 		content.add(serverAddressField, c); c.gridy++;
@@ -199,8 +178,8 @@ public class VoiceChatPanel extends PluginPanel
 
 		styleCheckBox(autoConnectCheck);
 		autoConnectCheck.setToolTipText("Automatically connect to the server when logging in");
-		autoConnectCheck.setSelected(Boolean.parseBoolean(cfg("autoConnect", "false")));
-		autoConnectCheck.addActionListener(e -> save("autoConnect", String.valueOf(autoConnectCheck.isSelected())));
+		autoConnectCheck.setSelected(Boolean.parseBoolean(readFromConfig("autoConnect")));
+		autoConnectCheck.addActionListener(e -> saveToConfig("autoConnect", String.valueOf(autoConnectCheck.isSelected())));
 		content.add(autoConnectCheck, c); c.gridy++;
 
 		content.add(buildDivider(), c); c.gridy++;
@@ -209,12 +188,12 @@ public class VoiceChatPanel extends PluginPanel
 		content.add(buildSectionHeader("Voice"), c); c.gridy++;
 
 		content.add(buildLabel("Voice Mode"), c); c.gridy++;
-		String savedMode = cfg("voiceMode", null);
+		String savedMode = readFromConfig("voiceMode");
 		voiceModeCombo.setSelectedItem(savedMode != null ? VoiceMode.valueOf(savedMode) : VoiceMode.PUSH_TO_TALK);
 		voiceModeCombo.addActionListener(e ->
 		{
 			VoiceMode mode = (VoiceMode) voiceModeCombo.getSelectedItem();
-			if (mode != null) { save("voiceMode", mode.name()); updateVoiceModeVisibility(mode); }
+			if (mode != null) { saveToConfig("voiceMode", mode.name()); updateVoiceModeVisibility(mode); }
 		});
 		content.add(voiceModeCombo, c); c.gridy++;
 
@@ -232,13 +211,13 @@ public class VoiceChatPanel extends PluginPanel
 		content.add(buildRangeSlider(), c); c.gridy++;
 
 		styleCheckBox(mutedCheck);
-		mutedCheck.setSelected(Boolean.parseBoolean(cfg("muted", "false")));
-		mutedCheck.addActionListener(e -> save("muted", String.valueOf(mutedCheck.isSelected())));
+		mutedCheck.setSelected(Boolean.parseBoolean(readFromConfig("muted")));
+		mutedCheck.addActionListener(e -> saveToConfig("muted", String.valueOf(mutedCheck.isSelected())));
 		content.add(mutedCheck, c); c.gridy++;
 
 		styleCheckBox(deafenedCheck);
-		deafenedCheck.setSelected(Boolean.parseBoolean(cfg("deafened", "false")));
-		deafenedCheck.addActionListener(e -> save("deafened", String.valueOf(deafenedCheck.isSelected())));
+		deafenedCheck.setSelected(Boolean.parseBoolean(readFromConfig("deafened")));
+		deafenedCheck.addActionListener(e -> saveToConfig("deafened", String.valueOf(deafenedCheck.isSelected())));
 		content.add(deafenedCheck, c); c.gridy++;
 
 		content.add(buildDivider(), c); c.gridy++;
@@ -258,9 +237,9 @@ public class VoiceChatPanel extends PluginPanel
 		content.add(buildSectionHeader("Overlay"), c); c.gridy++;
 
 		styleCheckBox(showOverlayCheck);
-		String showOverlaySaved = cfg("showOverlay", "true");
+		String showOverlaySaved = readFromConfig("showOverlay");
 		showOverlayCheck.setSelected(!"false".equals(showOverlaySaved));
-		showOverlayCheck.addActionListener(e -> save("showOverlay", String.valueOf(showOverlayCheck.isSelected())));
+		showOverlayCheck.addActionListener(e -> saveToConfig("showOverlay", String.valueOf(showOverlayCheck.isSelected())));
 		content.add(showOverlayCheck, c); c.gridy++;
 
 		content.add(buildDivider(), c); c.gridy++;
@@ -270,8 +249,8 @@ public class VoiceChatPanel extends PluginPanel
 
 		styleCheckBox(localLoopbackCheck);
 		localLoopbackCheck.setToolTipText("Hear your own mic locally — no network involved");
-		localLoopbackCheck.setSelected(Boolean.parseBoolean(cfg("localLoopback", "false")));
-		localLoopbackCheck.addActionListener(e -> save("localLoopback", String.valueOf(localLoopbackCheck.isSelected())));
+		localLoopbackCheck.setSelected(Boolean.parseBoolean(readFromConfig("localLoopback")));
+		localLoopbackCheck.addActionListener(e -> saveToConfig("localLoopback", String.valueOf(localLoopbackCheck.isSelected())));
 		content.add(localLoopbackCheck, c); c.gridy++;
 
 		content.add(buildDivider(), c); c.gridy++;
@@ -287,9 +266,14 @@ public class VoiceChatPanel extends PluginPanel
 
 		styleCheckBox(muteAllCheck);
 		muteAllCheck.setToolTipText("Automatically mute all players and unmute them manually");
-		muteAllCheck.setSelected(Boolean.parseBoolean(cfg("muteAll", "false")));
-		muteAllCheck.addActionListener(e -> save("muteAll", String.valueOf(muteAllCheck.isSelected())));
+		muteAllCheck.setSelected(Boolean.parseBoolean(readFromConfig("muteAll")));
+		muteAllCheck.addActionListener(e -> saveToConfig("muteAll", String.valueOf(muteAllCheck.isSelected())));
 		content.add(muteAllCheck, c); c.gridy++;
+
+		JButton clearMuteListButton = buildButton("Clear mute list", e -> plugin.getPlaybackManager().clearMutedPlayers());
+		clearMuteListButton.setForeground(new Color(220, 50, 50));
+		content.add(clearMuteListButton, c); c.gridy++;
+		content.add(buildDivider(), c); c.gridy++;
 
 		content.add(buildDivider(), c); c.gridy++;
 		playersListPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
@@ -458,20 +442,21 @@ public class VoiceChatPanel extends PluginPanel
 
 	private void resetAllSettings()
 	{
-		save("serverAddress", DEFAULT_SERVER_ADDRESS);
-		save("autoConnect", "false");
-		save("voiceMode", VoiceMode.PUSH_TO_TALK.name());
-		save("pushToTalkKey", KeyEvent.VK_V + ":"+KeyEvent.CTRL_DOWN_MASK);
-		save("vadSensitivity", "30");
-		save("voiceRange", "15");
-		save("muted", "false");
-		save("deafened", "false");
-		save("inputDevice", "");
-		save("outputDevice", "");
-		save("micGain", "100");
-		save("outputVolume", "100");
-		save("showOverlay", "true");
-		save("localLoopback", "false");
+		saveToConfig("serverAddress", DEFAULT_SERVER_ADDRESS);
+		saveToConfig("autoConnect", "false");
+		saveToConfig("voiceMode", VoiceMode.PUSH_TO_TALK.name());
+		saveToConfig("pushToTalkKey", KeyEvent.VK_V + ":"+KeyEvent.CTRL_DOWN_MASK);
+		saveToConfig("vadSensitivity", "30");
+		saveToConfig("voiceRange", "15");
+		saveToConfig("muted", "false");
+		saveToConfig("deafened", "false");
+		saveToConfig("inputDevice", "");
+		saveToConfig("outputDevice", "");
+		saveToConfig("micGain", "100");
+		saveToConfig("outputVolume", "100");
+		saveToConfig("showOverlay", "true");
+		saveToConfig("localLoopback", "false");
+		saveToConfig("muteAll", "true");
 
 		// Update UI controls
 		serverAddressField.setText(DEFAULT_SERVER_ADDRESS);
@@ -489,7 +474,7 @@ public class VoiceChatPanel extends PluginPanel
 		outputVolSlider.setValue(100);
 		showOverlayCheck.setSelected(true);
 		localLoopbackCheck.setSelected(false);
-		muteAllCheck.setSelected(false);
+		muteAllCheck.setSelected(true);
 		updateVoiceModeVisibility(VoiceMode.PUSH_TO_TALK);
 	}
 
@@ -559,7 +544,7 @@ public class VoiceChatPanel extends PluginPanel
 	private void buildPttKeyRow()
 	{
 		pttKeyRow.setOpaque(false);
-		String savedRaw = cfg("pushToTalkKey", null);
+		String savedRaw = readFromConfig("pushToTalkKey");
 		capturedKeybind = parseKeybind(savedRaw);
 		pttKeyField.setText(keybindDisplayName(capturedKeybind.getKeyCode(), capturedKeybind.getModifiers()));
 		styleTextField(pttKeyField);
@@ -595,7 +580,7 @@ public class VoiceChatPanel extends PluginPanel
 				int mods = e.getModifiersEx();
 				capturedKeybind = new Keybind(code, mods);
 				pttKeyField.setText(keybindDisplayName(code, mods));
-				save("pushToTalkKey", code + ":" + mods);
+				saveToConfig("pushToTalkKey", code + ":" + mods);
 				pttKeyField.transferFocus();
 			}
 		});
@@ -628,7 +613,7 @@ public class VoiceChatPanel extends PluginPanel
 	private void buildVadRow()
 	{
 		vadRow.setOpaque(false);
-		int val = parseInt(cfg("vadSensitivity", "30"), 30);
+		int val = parseInt(readFromConfig("vadSensitivity"), 30);
 		vadSlider.setValue(val);
 		vadSlider.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		vadSlider.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
@@ -642,7 +627,7 @@ public class VoiceChatPanel extends PluginPanel
 		vadSlider.addChangeListener(e ->
 		{
 			lbl.setText(vadSlider.getValue() + "%");
-			if (!vadSlider.getValueIsAdjusting()) save("vadSensitivity", String.valueOf(vadSlider.getValue()));
+			if (!vadSlider.getValueIsAdjusting()) saveToConfig("vadSensitivity", String.valueOf(vadSlider.getValue()));
 		});
 		vadRow.add(vadSlider, BorderLayout.CENTER);
 		vadRow.add(lbl, BorderLayout.EAST);
@@ -650,7 +635,7 @@ public class VoiceChatPanel extends PluginPanel
 
 	private JPanel buildRangeSlider()
 	{
-		int val = parseInt(cfg("voiceRange", "15"), 15);
+		int val = parseInt(readFromConfig("voiceRange"), 15);
 		rangeSlider.setValue(val);
 		rangeSlider.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		rangeSlider.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
@@ -676,7 +661,7 @@ public class VoiceChatPanel extends PluginPanel
 		rangeSlider.addChangeListener(e ->
 		{
 			lbl.setText(rangeSlider.getValue() + " tiles ");
-			if (!rangeSlider.getValueIsAdjusting()) save("voiceRange", String.valueOf(rangeSlider.getValue()));
+			if (!rangeSlider.getValueIsAdjusting()) saveToConfig("voiceRange", String.valueOf(rangeSlider.getValue()));
 		});
 		row.add(rangeSlider, BorderLayout.CENTER);
 		row.add(lbl, BorderLayout.NORTH);
@@ -685,7 +670,7 @@ public class VoiceChatPanel extends PluginPanel
 
 	private JPanel buildPercentSlider(JSlider slider, String key, int defaultVal)
 	{
-		int val = parseInt(cfg(key, String.valueOf(defaultVal)), defaultVal);
+		int val = parseInt(readFromConfig(key), defaultVal);
 		slider.setValue(val);
 		slider.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		slider.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
@@ -701,7 +686,7 @@ public class VoiceChatPanel extends PluginPanel
 		slider.addChangeListener(e ->
 		{
 			lbl.setText(slider.getValue() + "%");
-			if (!slider.getValueIsAdjusting()) save(key, String.valueOf(slider.getValue()));
+			if (!slider.getValueIsAdjusting()) saveToConfig(key, String.valueOf(slider.getValue()));
 		});
 		row.add(slider, BorderLayout.CENTER);
 		row.add(lbl, BorderLayout.EAST);
@@ -750,17 +735,14 @@ public class VoiceChatPanel extends PluginPanel
 		return (s == null || s.equals(SYSTEM_DEFAULT)) ? "" : s;
 	}
 
-	// ── Misc ─────────────────────────────────────────────────────
-
-	private void save(String key, String value)
+	private void saveToConfig(String key, String value)
 	{
-		configManager.setConfiguration(VoiceChatConfig.CONFIG_GROUP, key, value);
+		configManager.setConfiguration("voicescape", key, value);
 	}
 
-	private String cfg(String key, String fallback)
+	private String readFromConfig(String key)
 	{
-		String v = configManager.getConfiguration(VoiceChatConfig.CONFIG_GROUP, key);
-		return (v != null && !v.isEmpty()) ? v : fallback;
+        return configManager.getConfiguration("voicescape", key);
 	}
 
 	private JLabel tinyLbl(String text)

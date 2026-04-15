@@ -1,15 +1,6 @@
 package com.voicescape;
 
 import com.google.inject.Provides;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import javax.imageio.ImageIO;
-import javax.inject.Inject;
-
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -28,6 +19,10 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
+
+import javax.imageio.ImageIO;
+import javax.inject.Inject;
+import java.util.*;
 
 @Slf4j
 @PluginDescriptor(name = "VoiceScape", description = "Proximity-based voice chat for OSRS", tags = { "voice", "chat",
@@ -114,7 +109,7 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 	}
 
 	@Override
-	protected void shutDown() throws Exception {
+	protected void shutDown() {
 		log.info("VoiceScape shutting down");
 
 		keyManager.unregisterKeyListener(this);
@@ -210,7 +205,8 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 			String hash = HashUtil.hmac(dailyKey, player.getName());
 			if (activeSpeakers.contains(hash) || mutedHashes.contains(hash)) {
 				if(config.muteAll() && !playbackManager.getUnmutedDefaultHashes().contains(hash)) {
-					playbackManager.mutePlayerDefault(hash);
+					playbackManager.mutePlayer(hash);
+					continue;
 				}
 				speakerNames.put(player.getName(), hash);
 			}

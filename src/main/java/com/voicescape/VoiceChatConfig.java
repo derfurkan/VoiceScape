@@ -1,16 +1,12 @@
 package com.voicescape;
 
-import java.awt.event.KeyEvent;
-import net.runelite.client.config.Config;
-import net.runelite.client.config.ConfigGroup;
-import net.runelite.client.config.ConfigItem;
-import net.runelite.client.config.Keybind;
-import net.runelite.client.config.Range;
+import net.runelite.client.config.*;
 
-@ConfigGroup(VoiceChatConfig.CONFIG_GROUP)
+import java.awt.event.KeyEvent;
+
+@ConfigGroup("voicescape")
 public interface VoiceChatConfig extends Config
 {
-	String CONFIG_GROUP = "voicechat";
 
 	@ConfigItem(keyName = "serverAddress", name = "", description = "", hidden = true)
 	default String serverAddress()
@@ -75,14 +71,14 @@ public interface VoiceChatConfig extends Config
 	}
 
 	@ConfigItem(keyName = "micGain", name = "", description = "", hidden = true)
-	@Range(min = 0, max = 200)
+	@Range(max = 200)
 	default int micGain()
 	{
 		return 100;
 	}
 
 	@ConfigItem(keyName = "outputVolume", name = "", description = "", hidden = true)
-	@Range(min = 0, max = 200)
+	@Range(max = 200)
 	default int outputVolume()
 	{
 		return 100;

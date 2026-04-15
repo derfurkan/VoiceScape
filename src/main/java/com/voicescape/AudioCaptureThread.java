@@ -4,15 +4,15 @@ import io.github.jaredmdobson.concentus.OpusApplication;
 import io.github.jaredmdobson.concentus.OpusEncoder;
 import io.github.jaredmdobson.concentus.OpusException;
 import io.github.jaredmdobson.concentus.OpusSignal;
-import java.util.concurrent.atomic.AtomicBoolean;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.TargetDataLine;
-
-import lombok.Getter;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 public class AudioCaptureThread extends Thread

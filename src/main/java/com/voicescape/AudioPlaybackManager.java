@@ -2,18 +2,19 @@ package com.voicescape;
 
 import io.github.jaredmdobson.concentus.OpusDecoder;
 import io.github.jaredmdobson.concentus.OpusException;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+
+
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.Mixer;
+import javax.sound.sampled.SourceDataLine;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.DataLine;
-import javax.sound.sampled.Mixer;
-import javax.sound.sampled.SourceDataLine;
-
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class AudioPlaybackManager extends Thread {
@@ -27,8 +28,6 @@ public class AudioPlaybackManager extends Thread {
 	private final Set<String> activeSpeakers = ConcurrentHashMap.newKeySet();
 	@Getter
 	private final Set<String> mutedHashes = ConcurrentHashMap.newKeySet();
-	@Getter
-	private final Set<String> mutedDefaultHashes = ConcurrentHashMap.newKeySet();
 	@Getter
 	private final Set<String> unmutedDefaultHashes = ConcurrentHashMap.newKeySet();
 	private volatile Map<String, Integer> nearbyDistances = Collections.emptyMap();
@@ -47,8 +46,8 @@ public class AudioPlaybackManager extends Thread {
 		}
 	}
 
-	public void mutePlayerDefault(String hash) {
-		mutedHashes.add(hash);
+	public void clearMutedPlayers() {
+		mutedHashes.clear();
 	}
 
 	public void mutePlayer(String hash) {
@@ -60,9 +59,8 @@ public class AudioPlaybackManager extends Thread {
 	}
 
 	public boolean isPlayerMuted(String hash) {
-		return mutedHashes.contains(hash) || mutedDefaultHashes.contains(hash);
+		return mutedHashes.contains(hash);
 	}
-
 
 	public void updateNearbyDistances(Map<String, Integer> distances) {
 		this.nearbyDistances = distances;
@@ -201,7 +199,6 @@ public class AudioPlaybackManager extends Thread {
 				}
 
 				if (senderCount > 0) {
-					// Apply output volume and clip to int16
 					double volume = config.outputVolume() / 100.0;
 					byte[] output = new byte[AudioDeviceManager.FRAME_SIZE_BYTES];
 					for (int i = 0; i < mixBuffer.length; i++) {
@@ -211,7 +208,7 @@ public class AudioPlaybackManager extends Thread {
 					}
 					line.write(output, 0, output.length);
 				} else {
-					Thread.sleep(5);
+					Thread.sleep(15); // Reset
 				}
 
 				speakers.entrySet().removeIf(e -> {
