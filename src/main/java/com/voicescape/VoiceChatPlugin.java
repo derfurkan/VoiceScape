@@ -68,6 +68,9 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 	private int tickCounter = 0;
 	private boolean hadNearbyPlayers = false;
 
+	private final Map<String, String> playerHashCache = new HashMap<>();
+	private byte[] lastDailyKey = null;
+
 	@Override
 	protected void startUp() throws Exception {
 		log.info("VoiceScape starting");
@@ -159,13 +162,18 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 			return;
 		}
 
+		if (dailyKey != lastDailyKey) {
+			playerHashCache.clear();
+			lastDailyKey = dailyKey;
+		}
+
 		WorldPoint localPos = localPlayer.getWorldLocation();
 		int range = config.voiceRange();
 
 		List<String> nearbyHashes = new ArrayList<>();
 		Map<String, Integer> distanceMap = new HashMap<>();
 
-		distanceMap.put(HashUtil.hmac(dailyKey, localPlayer.getName()), 0);
+		distanceMap.put(getOrCreateHash(localPlayer.getName()), 0);
 
 		for (Player player : client.getTopLevelWorldView().players()) {
 			if (player == null || player == localPlayer || player.getName() == null) {
@@ -179,7 +187,7 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 
 			int distance = localPos.distanceTo(playerPos);
 			if (distance <= range) {
-				String hash = HashUtil.hmac(dailyKey, player.getName());
+				String hash = getOrCreateHash(player.getName());
 				distanceMap.put(hash, distance);
 				nearbyHashes.add(hash);
 			}
@@ -202,7 +210,7 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 			if (player == null || player.getName() == null || player == localPlayer) {
 				continue;
 			}
-			String hash = HashUtil.hmac(dailyKey, player.getName());
+			String hash = getOrCreateHash(player.getName());
 			if (activeSpeakers.contains(hash) || mutedHashes.contains(hash)) {
 				if(config.muteAll() && !playbackManager.getUnmutedDefaultHashes().contains(hash)) {
 					playbackManager.mutePlayer(hash);
@@ -263,6 +271,13 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 
 	public byte[] getCurrentDailyKey() {
 		return networkClient == null ? null : networkClient.getCurrentDailyKey();
+	}
+
+
+	private String getOrCreateHash(String name) {
+		byte[] key = networkClient.getCurrentDailyKey();
+		if (key == null) return "";
+		return playerHashCache.computeIfAbsent(name, n -> HashUtil.hmac(key, n));
 	}
 
 

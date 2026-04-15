@@ -67,16 +67,11 @@ public class AudioPlaybackManager extends Thread {
 	}
 
 	public void receiveLoopback(byte[] pcm) {
-		if (config.deafened() || line == null || !activeSpeakers.isEmpty()) {
+		if (config.deafened() || line == null) {
 			return;
 		}
 		
-		double volume = config.outputVolume() / 100.0;
-		if (volume == 1.0) {
-			line.write(pcm, 0, pcm.length);
-			return;
-		}
-
+		double volume = (config.outputVolume() / 100.0);
 		byte[] scaled = new byte[pcm.length];
 		for (int i = 0; i < pcm.length - 1; i += 2) {
 			int sample = (pcm[i] & 0xFF) | (pcm[i + 1] << 8);
@@ -152,7 +147,7 @@ public class AudioPlaybackManager extends Thread {
 				for (Map.Entry<String, SpeakerState> entry : speakers.entrySet()) {
 					SpeakerState state = entry.getValue();
 
-					if (now - state.lastReceiveTime > 500) {
+					if (now - state.lastReceiveTime > 1000) {
 						activeSpeakers.remove(entry.getKey());
 						continue;
 					}
@@ -163,9 +158,10 @@ public class AudioPlaybackManager extends Thread {
 						continue;
 					}
 
-					float distScale = 1.0f - (float) distance / 15;
+					float distScale = 1.0f - (float) (Math.log(distance + 1) / Math.log(16));
 					distScale = Math.max(0f, distScale);
 					if (distScale <= 0f) {
+						activeSpeakers.remove(entry.getKey());
 						continue;
 					}
 
@@ -193,6 +189,7 @@ public class AudioPlaybackManager extends Thread {
 							mixBuffer[i] += decodeBuf[i] * distScale;
 						}
 						senderCount++;
+						activeSpeakers.add(entry.getKey());
 					} catch (Exception e) {
 						log.debug("Opus decode error for sender {}: {}", entry.getKey(), e.getMessage());
 					}
@@ -213,6 +210,7 @@ public class AudioPlaybackManager extends Thread {
 
 				speakers.entrySet().removeIf(e -> {
 					if (now - e.getValue().lastReceiveTime > 5000) {
+						activeSpeakers.remove(e.getKey());
 						e.getValue().jitterBuffer.reset();
 						return true;
 					}

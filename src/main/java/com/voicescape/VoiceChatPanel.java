@@ -135,6 +135,11 @@ public class VoiceChatPanel extends PluginPanel
 		content.add(buildSectionHeader("Connection"), c); c.gridy++;
 
 		content.add(buildLabel("Server Address (host:port)"), c); c.gridy++;
+
+		JLabel defaultServerLabel = buildLabel("Default: " + DEFAULT_SERVER_ADDRESS);
+		defaultServerLabel.setForeground(new Color(110, 110, 110));
+		content.add(defaultServerLabel, c); c.gridy++;
+
 		serverAddressField.setText(readFromConfig("serverAddress"));
 		styleTextField(serverAddressField);
 		serverAddressField.addActionListener(e -> saveToConfig("serverAddress", serverAddressField.getText().trim()));
@@ -147,9 +152,7 @@ public class VoiceChatPanel extends PluginPanel
 		});
 		content.add(serverAddressField, c); c.gridy++;
 
-		JLabel defaultServerLabel = buildLabel("Default: " + DEFAULT_SERVER_ADDRESS);
-		defaultServerLabel.setForeground(new Color(110, 110, 110));
-		content.add(defaultServerLabel, c); c.gridy++;
+
 
 		// Connect / Disconnect button (disabled until logged in)
 		connectButton.setFocusPainted(false);
@@ -220,6 +223,12 @@ public class VoiceChatPanel extends PluginPanel
 		deafenedCheck.addActionListener(e -> saveToConfig("deafened", String.valueOf(deafenedCheck.isSelected())));
 		content.add(deafenedCheck, c); c.gridy++;
 
+		styleCheckBox(localLoopbackCheck);
+		localLoopbackCheck.setToolTipText("Hear your own mic locally");
+		localLoopbackCheck.setSelected(Boolean.parseBoolean(readFromConfig("localLoopback")));
+		localLoopbackCheck.addActionListener(e -> saveToConfig("localLoopback", String.valueOf(localLoopbackCheck.isSelected())));
+		content.add(localLoopbackCheck, c); c.gridy++;
+
 		content.add(buildDivider(), c); c.gridy++;
 
 		// ── Audio Levels ─────────────────────────────────────────
@@ -241,19 +250,6 @@ public class VoiceChatPanel extends PluginPanel
 		showOverlayCheck.setSelected(!"false".equals(showOverlaySaved));
 		showOverlayCheck.addActionListener(e -> saveToConfig("showOverlay", String.valueOf(showOverlayCheck.isSelected())));
 		content.add(showOverlayCheck, c); c.gridy++;
-
-		content.add(buildDivider(), c); c.gridy++;
-
-		// ── Loopback ─────────────────────────────────────────────
-		content.add(buildSectionHeader("Loopback / Testing"), c); c.gridy++;
-
-		styleCheckBox(localLoopbackCheck);
-		localLoopbackCheck.setToolTipText("Hear your own mic locally — no network involved");
-		localLoopbackCheck.setSelected(Boolean.parseBoolean(readFromConfig("localLoopback")));
-		localLoopbackCheck.addActionListener(e -> saveToConfig("localLoopback", String.valueOf(localLoopbackCheck.isSelected())));
-		content.add(localLoopbackCheck, c); c.gridy++;
-
-		content.add(buildDivider(), c); c.gridy++;
 
 		// ── Reset Settings ───────────────────────────────────────
 		JButton resetButton = buildButton("Reset All Settings to Defaults", e -> resetAllSettings());
