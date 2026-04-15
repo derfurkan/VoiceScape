@@ -25,7 +25,7 @@ import java.util.Map;
 public class VoiceChatPanel extends PluginPanel
 {
 	private static final String SYSTEM_DEFAULT = "System Default";
-	private static final String DEFAULT_SERVER_ADDRESS = "voicescape.example.com:5555";
+	private static final String DEFAULT_SERVER_ADDRESS = "voice-scape.de";
 	private static final Color  DIVIDER_COLOR  = new Color(60, 60, 60);
 
 	private final ConfigManager configManager;
@@ -356,7 +356,7 @@ public class VoiceChatPanel extends PluginPanel
 
 			if (nameToHash == null || nameToHash.isEmpty())
 			{
-				JLabel empty = new JLabel("No nearby players");
+				JLabel empty = new JLabel("No players speaking");
 				empty.setForeground(new Color(110, 110, 110));
 				empty.setFont(FontManager.getRunescapeSmallFont());
 				GridBagConstraints gc = new GridBagConstraints();
@@ -394,7 +394,7 @@ public class VoiceChatPanel extends PluginPanel
 
 					JButton muteBtn = new JButton(muted ? "Unmute" : "Mute");
 					muteBtn.setFocusPainted(false);
-					muteBtn.setPreferredSize(new Dimension(65, 20));
+					muteBtn.setPreferredSize(new Dimension(85, 20));
 					muteBtn.setFont(FontManager.getRunescapeSmallFont());
 					muteBtn.setBackground(muted ? ColorScheme.DARKER_GRAY_COLOR : new Color(120, 30, 30));
 					muteBtn.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
@@ -412,7 +412,7 @@ public class VoiceChatPanel extends PluginPanel
 							pm.getUnmutedDefaultHashes().remove(hash);
 							pm.mutePlayer(hash);
 						}
-						// Update button in place — list refreshes on next game tick
+						
 						muteBtn.setText(nowMuted ? "Mute" : "Unmute");
 						muteBtn.setBackground(nowMuted ? new Color(120, 30, 30) : ColorScheme.DARKER_GRAY_COLOR);
 						nameLabel.setForeground(nowMuted ? Color.WHITE : new Color(150, 150, 150));
@@ -704,8 +704,6 @@ public class VoiceChatPanel extends PluginPanel
 		SwingUtilities.invokeLater(() -> { revalidate(); repaint(); });
 	}
 
-	// ── Combo helpers ────────────────────────────────────────────
-
 	private void populateCombo(JComboBox<String> combo, java.util.List<String> devices, String selected)
 	{
 		var listeners = combo.getActionListeners();
@@ -713,7 +711,6 @@ public class VoiceChatPanel extends PluginPanel
 		combo.removeAllItems();
 		combo.addItem(SYSTEM_DEFAULT);
 		for (String d : devices) combo.addItem(d);
-		// Prevent combo from dictating panel width
 		combo.setPrototypeDisplayValue("                              ");
 		selectDevice(combo, selected);
 		for (var l : listeners) combo.addActionListener(l);

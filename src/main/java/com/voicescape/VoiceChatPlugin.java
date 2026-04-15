@@ -70,7 +70,7 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 
 	@Override
 	protected void startUp() throws Exception {
-		log.info("VoiceScape starting up");
+		log.info("VoiceScape starting");
 
 		playbackManager = new AudioPlaybackManager(config);
 		networkClient = new NetworkClient(config, playbackManager);
@@ -206,7 +206,6 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 			if (activeSpeakers.contains(hash) || mutedHashes.contains(hash)) {
 				if(config.muteAll() && !playbackManager.getUnmutedDefaultHashes().contains(hash)) {
 					playbackManager.mutePlayer(hash);
-					continue;
 				}
 				speakerNames.put(player.getName(), hash);
 			}

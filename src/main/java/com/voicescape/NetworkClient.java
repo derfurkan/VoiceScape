@@ -1,23 +1,19 @@
 package com.voicescape;
 
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.net.SocketException;
+import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-
-import lombok.Getter;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class NetworkClient
@@ -185,7 +181,7 @@ public class NetworkClient
 
 		if (opusPayload.length > MAX_AUDIO_PAYLOAD)
 		{
-			log.warn("Audio payload too large ({} bytes), dropping", opusPayload.length);
+			log.debug("Audio payload too large ({} bytes), dropping", opusPayload.length);
 			return;
 		}
 
@@ -448,7 +444,7 @@ public class NetworkClient
 				break;
 
 			default:
-				log.warn("Unknown message type: 0x{}", Integer.toHexString(type));
+				log.debug("Unknown message type: 0x{}", Integer.toHexString(type));
 				break;
 		}
 	}
@@ -531,11 +527,11 @@ public class NetworkClient
 			udpSocket = new DatagramSocket();
 			sendUdpRegistration();
 			startUdpReceiveThread();
-			log.info("UDP audio channel opened to {}:{}", host, port);
+			log.debug("UDP audio channel opened to {}:{}", host, port);
 		}
 		catch (Exception e)
 		{
-			log.warn("UDP audio unavailable, using TCP fallback: {}", e.getMessage());
+			log.debug("UDP audio unavailable, using TCP fallback: {}", e.getMessage());
 			closeUdpSocket();
 		}
 	}

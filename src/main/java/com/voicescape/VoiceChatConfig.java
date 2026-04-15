@@ -11,7 +11,7 @@ public interface VoiceChatConfig extends Config
 	@ConfigItem(keyName = "serverAddress", name = "", description = "", hidden = true)
 	default String serverAddress()
 	{
-		return "voicescape.example.com:5555";
+		return "voice-scape.de";
 	}
 
 	@ConfigItem(keyName = "autoConnect", name = "", description = "", hidden = true)
@@ -99,7 +99,7 @@ public interface VoiceChatConfig extends Config
 	@ConfigItem(keyName = "muteAll", name = "", description = "", hidden = true)
 	default boolean muteAll()
 	{
-		return false;
+		return true;
 	}
 	
 }

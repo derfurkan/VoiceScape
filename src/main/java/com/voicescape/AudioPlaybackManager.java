@@ -114,7 +114,7 @@ public class AudioPlaybackManager extends Thread {
 					Mixer mixer = AudioSystem.getMixer(mixerInfo);
 					line = (SourceDataLine) mixer.getLine(info);
 				} else {
-					log.warn("Output device '{}' not found, falling back to default", deviceName);
+					log.debug("Output device '{}' not found, falling back to default", deviceName);
 					line = (SourceDataLine) AudioSystem.getLine(info);
 				}
 			} else {
@@ -126,7 +126,7 @@ public class AudioPlaybackManager extends Thread {
 			line.start();
 			log.debug("Audio playback line opened (buffer {} bytes)", bufferBytes);
 		} catch (Exception e) {
-			log.error("Failed to open audio playback line", e);
+			log.debug("Failed to open audio playback line", e);
 			line = null;
 		}
 	}
@@ -137,7 +137,7 @@ public class AudioPlaybackManager extends Thread {
 		openLine();
 
 		if (line == null) {
-			log.error("No playback line available, playback thread exiting");
+			log.debug("No playback line available, playback thread exiting");
 			return;
 		}
 
@@ -208,7 +208,7 @@ public class AudioPlaybackManager extends Thread {
 					}
 					line.write(output, 0, output.length);
 				} else {
-					Thread.sleep(15); // Reset
+					Thread.sleep(10); // Reset
 				}
 
 				speakers.entrySet().removeIf(e -> {
@@ -222,7 +222,7 @@ public class AudioPlaybackManager extends Thread {
 				Thread.currentThread().interrupt();
 				break;
 			} catch (Exception e) {
-				log.error("Error in audio playback loop", e);
+				log.debug("Error in audio playback loop", e);
 			}
 		}
 
@@ -263,7 +263,7 @@ public class AudioPlaybackManager extends Thread {
 			try {
 				decoder = new OpusDecoder(48000, 1);
 			} catch (OpusException e) {
-				log.warn("Failed to reset Opus decoder", e);
+				log.debug("Failed to reset Opus decoder", e);
 			}
 		}
 	}

@@ -1,14 +1,10 @@
 package com.voicescape;
 
+import lombok.extern.slf4j.Slf4j;
+
+import javax.sound.sampled.*;
 import java.util.ArrayList;
 import java.util.List;
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.DataLine;
-import javax.sound.sampled.Mixer;
-import javax.sound.sampled.SourceDataLine;
-import javax.sound.sampled.TargetDataLine;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class AudioDeviceManager
@@ -85,7 +81,7 @@ public class AudioDeviceManager
 				}
 				catch (Exception e)
 				{
-					log.warn("Mixer {} found but not usable: {}", name, e.getMessage());
+					log.debug("Mixer {} found but not usable: {}", name, e.getMessage());
 				}
 			}
 		}

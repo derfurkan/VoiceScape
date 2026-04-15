@@ -70,7 +70,7 @@ public class AudioCaptureThread extends Thread
 				}
 				else
 				{
-					log.warn("Input device '{}' not found, falling back to default", deviceName);
+					log.debug("Input device '{}' not found, falling back to default", deviceName);
 					line = (TargetDataLine) AudioSystem.getLine(info);
 				}
 			}
@@ -85,7 +85,7 @@ public class AudioCaptureThread extends Thread
 		}
 		catch (Exception e)
 		{
-			log.error("Failed to open audio capture line", e);
+			log.debug("Failed to open audio capture line", e);
 			line = null;
 		}
 	}
@@ -98,7 +98,7 @@ public class AudioCaptureThread extends Thread
 
 		if (line == null)
 		{
-			log.error("No capture line available, capture thread exiting");
+			log.debug("No capture line available, capture thread exiting");
 			return;
 		}
 
@@ -111,7 +111,7 @@ public class AudioCaptureThread extends Thread
 		}
 		catch (Exception e)
 		{
-			log.error("Failed to create Opus encoder", e);
+			log.debug("Failed to create Opus encoder", e);
 			closeLine();
 			return;
 		}
@@ -288,13 +288,13 @@ public class AudioCaptureThread extends Thread
 					}
 					catch (Exception e)
 					{
-						log.warn("Opus encode failed: {}", e.getMessage());
+						log.debug("Opus encode failed: {}", e.getMessage());
 					}
 				}
 			}
 			catch (Exception e)
 			{
-				log.error("Error in audio capture loop", e);
+				log.debug("Error in audio capture loop", e);
 			}
 		}
 
