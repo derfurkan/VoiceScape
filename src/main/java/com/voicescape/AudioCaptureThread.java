@@ -19,7 +19,7 @@ public class AudioCaptureThread extends Thread
 	private final NetworkClient networkClient;
 	private final AudioPlaybackManager playbackManager;
 	private final AtomicBoolean running = new AtomicBoolean(false);
-	private static final int VAD_HANGOVER_FRAMES = 30;
+	private static final int HANGOVER_FRAMES = 25;
 	private static final int VAD_PREROLL_FRAMES = 5;
 
 	private static final int TAIL_SILENCE_FRAMES = 5;
@@ -31,7 +31,7 @@ public class AudioCaptureThread extends Thread
 	@Setter
     private volatile boolean hasNearbyPlayers = false;
 	private boolean wasTransmitting = false;
-	private int vadHangoverRemaining = 0;
+	private int hangoverRemaining = 0;
 	private int tailSilenceRemaining = 0;
 	private final byte[][] prerollBuffer = new byte[VAD_PREROLL_FRAMES][];
 	private int prerollIndex = 0;
@@ -123,27 +123,34 @@ public class AudioCaptureThread extends Thread
 
 				double rms = calculateRmsAndApplyGain(buffer, bytesRead, gainByteBuffer, config.micGain());
 
+				boolean voiceActive;
+				if (config.voiceMode() == VoiceMode.PUSH_TO_TALK)
+				{
+					voiceActive = pttActive;
+				}
+				else
+				{
+					voiceActive = isAboveThreshold(rms);
+				}
+
 				boolean shouldTransmit = false;
 				boolean sendSilence = false;
-				
-				if ((config.voiceMode() == VoiceMode.PUSH_TO_TALK && pttActive) || (config.voiceMode() == VoiceMode.VOICE_ACTIVITY && isAboveThreshold(rms)))
+
+				if (voiceActive)
 				{
-					if (pttActive)
-					{
-						vadHangoverRemaining = VAD_HANGOVER_FRAMES;
-						tailSilenceRemaining = TAIL_SILENCE_FRAMES;
-						shouldTransmit = true;
-					}
-					else if (vadHangoverRemaining > 0)
-					{
-						vadHangoverRemaining--;
-						shouldTransmit = true;
-					}
-					else if (tailSilenceRemaining > 0)
-					{
-						tailSilenceRemaining--;
-                        sendSilence = true;
-					}
+					hangoverRemaining = HANGOVER_FRAMES;
+					tailSilenceRemaining = TAIL_SILENCE_FRAMES;
+					shouldTransmit = true;
+				}
+				else if (hangoverRemaining > 0)
+				{
+					hangoverRemaining--;
+					shouldTransmit = true;
+				}
+				else if (tailSilenceRemaining > 0)
+				{
+					tailSilenceRemaining--;
+					sendSilence = true;
 				}
 
 				transmitting = shouldTransmit || sendSilence;

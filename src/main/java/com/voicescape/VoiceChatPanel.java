@@ -568,7 +568,7 @@ public class VoiceChatPanel extends PluginPanel
 					return;
 				}
 
-				if (code == KeyEvent.CTRL_DOWN_MASK || code == KeyEvent.VK_SHIFT
+				if (code == KeyEvent.VK_CONTROL || code == KeyEvent.VK_SHIFT
 					|| code == KeyEvent.VK_ALT || code == KeyEvent.VK_META)
 				{
 					return;

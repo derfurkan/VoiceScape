@@ -10,15 +10,14 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
-import net.runelite.client.config.Keybind;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.util.HotkeyListener;
 
 import javax.imageio.ImageIO;
 import javax.inject.Inject;
@@ -27,7 +26,7 @@ import java.util.*;
 @Slf4j
 @PluginDescriptor(name = "VoiceScape", description = "Proximity-based voice chat for OSRS", tags = { "voice", "chat",
 		"proximity", "audio", "microphone" })
-public class VoiceChatPlugin extends Plugin implements KeyListener {
+public class VoiceChatPlugin extends Plugin {
 	private static final int HASH_UPDATE_INTERVAL_TICKS = 1;
 
 	@Inject
@@ -62,6 +61,30 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 	private VoiceChatPanel panel;
 
 	private volatile boolean pttTransmitting = false;
+
+	private final HotkeyListener pttListener = new HotkeyListener(() -> config.pushToTalkKey()) {
+		@Override
+		public void hotkeyPressed() {
+			if (config.voiceMode() != VoiceMode.PUSH_TO_TALK) {
+				return;
+			}
+			pttTransmitting = true;
+			if (captureThread != null) {
+				captureThread.setPttActive(true);
+			}
+		}
+
+		@Override
+		public void hotkeyReleased() {
+			if (config.voiceMode() != VoiceMode.PUSH_TO_TALK) {
+				return;
+			}
+			pttTransmitting = false;
+			if (captureThread != null) {
+				captureThread.setPttActive(false);
+			}
+		}
+	};
 
 	private boolean manuallyDisconnect = false;
 
@@ -105,7 +128,7 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 
 		overlayManager.add(voiceOverlay);
 
-		keyManager.registerKeyListener(this);
+		keyManager.registerKeyListener(pttListener);
 
 		playbackManager.start();
 		captureThread.start();
@@ -115,7 +138,7 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 	protected void shutDown() {
 		log.info("VoiceScape shutting down");
 
-		keyManager.unregisterKeyListener(this);
+		keyManager.unregisterKeyListener(pttListener);
 		overlayManager.remove(voiceOverlay);
 
 		if (navButton != null)
@@ -219,42 +242,6 @@ public class VoiceChatPlugin extends Plugin implements KeyListener {
 			}
 		}
 		panel.updatePlayerList(speakerNames);
-	}
-
-	@Override
-	public void keyPressed(java.awt.event.KeyEvent e) {
-		if (config.voiceMode() == VoiceMode.PUSH_TO_TALK && isPttKey(e)) {
-			pttTransmitting = true;
-			if (captureThread != null) {
-				captureThread.setPttActive(true);
-			}
-		}
-	}
-
-	@Override
-	public void keyReleased(java.awt.event.KeyEvent e) {
-		if (config.voiceMode() == VoiceMode.PUSH_TO_TALK && isPttKey(e)) {
-			pttTransmitting = false;
-			if (captureThread != null) {
-				captureThread.setPttActive(false);
-			}
-		}
-	}
-
-	private boolean isPttKey(java.awt.event.KeyEvent e) {
-		Keybind ptt = config.pushToTalkKey();
-		if (ptt == null || e.getKeyCode() != ptt.getKeyCode()) {
-			return false;
-		}
-		int requiredMods = ptt.getModifiers();
-		if (requiredMods == 0) {
-			return true;
-		}
-		return (e.getModifiersEx() & requiredMods) == requiredMods;
-	}
-
-	@Override
-	public void keyTyped(java.awt.event.KeyEvent e) {
 	}
 
 	public boolean isLocalPlayerTransmitting() {

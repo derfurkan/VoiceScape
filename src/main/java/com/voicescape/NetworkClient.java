@@ -28,7 +28,7 @@ public class NetworkClient
 	private static final byte MSG_SERVER_ERROR = 0x13;
 
 	private static final int PROTOCOL_VERSION = 1; // Change for later versions only for sever compatibillity
-	private static final int MAX_PACKET_SIZE = 1400;
+	private static final int MAX_TCP_FRAME_SIZE = 1500;
 	private static final int MAX_AUDIO_PAYLOAD = 1400;
 	private static final byte MSG_UDP_REGISTER = 0x20;
 	private static final int UDP_BUFFER_SIZE = 2048; // Increased to fit raw PCM frames plus headers
@@ -169,16 +169,16 @@ public class NetworkClient
 		}
 	}
 
-	public void sendAudioFrame(int sequenceNumber, byte[] opusPayload)
+	public void sendAudioFrame(int sequenceNumber, byte[] payload)
 	{
 		if (!isConnected())
 		{
 			return;
 		}
 
-		if (opusPayload.length > MAX_AUDIO_PAYLOAD)
+		if (payload.length > MAX_AUDIO_PAYLOAD)
 		{
-			log.debug("Audio payload too large ({} bytes), dropping", opusPayload.length);
+			log.debug("Audio payload too large ({} bytes), dropping", payload.length);
 			return;
 		}
 
@@ -192,7 +192,7 @@ public class NetworkClient
 
 		try
 		{
-			byte[] encrypted = UdpCrypto.encrypt(key, sequenceNumber, opusPayload);
+			byte[] encrypted = UdpCrypto.encrypt(key, sequenceNumber, payload);
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			DataOutputStream msg = new DataOutputStream(baos);
 			msg.writeByte(MSG_AUDIO_FRAME);
@@ -311,7 +311,7 @@ public class NetworkClient
 
 	private void writeFramed(DataOutputStream dst, byte[] payload) throws IOException
 	{
-		if(payload.length>MAX_PACKET_SIZE) {
+		if(payload.length>MAX_TCP_FRAME_SIZE) {
 			throw new IOException("Sending frame too large: " + payload.length);
 		}
 		dst.writeShort(payload.length);
@@ -327,7 +327,7 @@ public class NetworkClient
 			throw new IOException("Connection closed");
 		}
 		int length = input.readUnsignedShort();
-		if (length > MAX_PACKET_SIZE)
+		if (length > MAX_TCP_FRAME_SIZE)
 		{
 			throw new IOException("Incoming frame too large: " + length);
 		}
