@@ -1,10 +1,7 @@
 package com.voicescape;
 
-import io.github.jaredmdobson.concentus.OpusDecoder;
-import io.github.jaredmdobson.concentus.OpusException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-
 
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
@@ -32,6 +29,10 @@ public class AudioPlaybackManager extends Thread {
 	private final Set<String> unmutedDefaultHashes = ConcurrentHashMap.newKeySet();
 	private volatile Map<String, Integer> nearbyDistances = Collections.emptyMap();
 	private SourceDataLine line;
+
+	private final short[] decodedBuffer = new short[AudioDeviceManager.FRAME_SIZE_BYTES / 2];
+	private final short[] loopbackShortBuffer = new short[AudioDeviceManager.FRAME_SIZE_BYTES / 2];
+	private final byte[] outputByteBuffer = new byte[AudioDeviceManager.FRAME_SIZE_BYTES];
 
 	public AudioPlaybackManager(VoiceChatConfig config) {
 		super("VoiceScape-Playback");
@@ -72,14 +73,15 @@ public class AudioPlaybackManager extends Thread {
 		}
 		
 		double volume = (config.outputVolume() / 100.0);
-		byte[] scaled = new byte[pcm.length];
-		for (int i = 0; i < pcm.length - 1; i += 2) {
-			int sample = (pcm[i] & 0xFF) | (pcm[i + 1] << 8);
-			sample = (int) Math.max(-32768, Math.min(32767, sample * volume));
-			scaled[i] = (byte) (sample & 0xFF);
-			scaled[i + 1] = (byte) ((sample >> 8) & 0xFF);
+		
+		AudioDeviceManager.bytesToShorts(pcm, pcm.length, loopbackShortBuffer);
+		
+		for (int i = 0; i < loopbackShortBuffer.length; i++) {
+			loopbackShortBuffer[i] = (short) Math.max(-32768, Math.min(32767, loopbackShortBuffer[i] * volume));
 		}
-		line.write(scaled, 0, scaled.length);
+		
+		AudioDeviceManager.shortsToBytes(loopbackShortBuffer, outputByteBuffer);
+		line.write(outputByteBuffer, 0, outputByteBuffer.length);
 	}
 
 	public void receiveAudio(String senderIdentityHash, int sequenceNumber, byte[] opusPayload) {
@@ -136,8 +138,6 @@ public class AudioPlaybackManager extends Thread {
 			return;
 		}
 
-		short[] decodeBuf = new short[FRAME_SIZE_SAMPLES];
-
 		while (running.get()) {
 			try {
 				float[] mixBuffer = new float[FRAME_SIZE_SAMPLES];
@@ -165,47 +165,51 @@ public class AudioPlaybackManager extends Thread {
 						continue;
 					}
 
-					if (state.jitterBuffer.consumeReset()) {
-						state.resetDecoder();
-					}
-
 					if (!state.jitterBuffer.isReady() || !state.jitterBuffer.canPoll()) {
 						continue;
 					}
 
-					byte[] opusPayload = state.jitterBuffer.poll();
+					byte[] payload = state.jitterBuffer.poll();
 
 					try {
-						int decoded;
-						if (opusPayload != null) {
-							decoded = state.decoder.decode(opusPayload, 0, opusPayload.length,
-									decodeBuf, 0, FRAME_SIZE_SAMPLES, false);
-						} else {
-							decoded = state.decoder.decode(null, 0, 0,
-									decodeBuf, 0, FRAME_SIZE_SAMPLES, false);
-						}
+						if (payload == null)
+							continue;
 
-						for (int i = 0; i < decoded; i++) {
-							mixBuffer[i] += decodeBuf[i] * distScale;
+						AudioCodec.decode(payload, 0, payload.length, decodedBuffer);
+
+						for (int i = 0; i < decodedBuffer.length; i++) {
+							if (i < mixBuffer.length) {
+								mixBuffer[i] += decodedBuffer[i] * distScale;
+							}
 						}
 						senderCount++;
 						activeSpeakers.add(entry.getKey());
 					} catch (Exception e) {
-						log.debug("Opus decode error for sender {}: {}", entry.getKey(), e.getMessage());
+						log.debug("Audio processing error for sender {}: {}", entry.getKey(), e.getMessage());
 					}
 				}
 
 				if (senderCount > 0) {
 					double volume = config.outputVolume() / 100.0;
-					byte[] output = new byte[AudioDeviceManager.FRAME_SIZE_BYTES];
-					for (int i = 0; i < mixBuffer.length; i++) {
-						int sample = (int) Math.max(-32768, Math.min(32767, mixBuffer[i] * volume));
-						output[i * 2] = (byte) (sample & 0xFF);
-						output[i * 2 + 1] = (byte) ((sample >> 8) & 0xFF);
+					
+					float maxVal = 0;
+					for (float v : mixBuffer) {
+						maxVal = Math.max(maxVal, Math.abs(v));
 					}
-					line.write(output, 0, output.length);
+					
+					float masterScale = 1.0f;
+					if (maxVal > 32767) {
+						masterScale = 32767f / maxVal;
+					}
+
+					for (int i = 0; i < mixBuffer.length; i++) {
+						loopbackShortBuffer[i] = (short) Math.max(-32768, Math.min(32767, mixBuffer[i] * masterScale * volume));
+					}
+					
+					AudioDeviceManager.shortsToBytes(loopbackShortBuffer, outputByteBuffer);
+					line.write(outputByteBuffer, 0, outputByteBuffer.length);
 				} else {
-					Thread.sleep(10); // Reset
+					Thread.sleep(10);
 				}
 
 				speakers.entrySet().removeIf(e -> {
@@ -246,23 +250,6 @@ public class AudioPlaybackManager extends Thread {
 
 	private static class SpeakerState {
 		final JitterBuffer jitterBuffer = new JitterBuffer();
-		OpusDecoder decoder;
 		volatile long lastReceiveTime = System.currentTimeMillis();
-
-		SpeakerState() {
-			try {
-				decoder = new OpusDecoder(48000, 1);
-			} catch (OpusException e) {
-				throw new RuntimeException("Failed to create Opus decoder", e);
-			}
-		}
-
-		void resetDecoder() {
-			try {
-				decoder = new OpusDecoder(48000, 1);
-			} catch (OpusException e) {
-				log.debug("Failed to reset Opus decoder", e);
-			}
-		}
 	}
 }

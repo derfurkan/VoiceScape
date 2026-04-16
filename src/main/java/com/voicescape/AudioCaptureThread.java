@@ -1,9 +1,6 @@
 package com.voicescape;
 
-import io.github.jaredmdobson.concentus.OpusApplication;
-import io.github.jaredmdobson.concentus.OpusEncoder;
-import io.github.jaredmdobson.concentus.OpusException;
-import io.github.jaredmdobson.concentus.OpusSignal;
+
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +9,7 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.TargetDataLine;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
@@ -21,11 +19,8 @@ public class AudioCaptureThread extends Thread
 	private final NetworkClient networkClient;
 	private final AudioPlaybackManager playbackManager;
 	private final AtomicBoolean running = new AtomicBoolean(false);
-	private static final int FRAME_SIZE_SAMPLES = AudioDeviceManager.FRAME_SIZE_BYTES / 2;
-	private static final int OPUS_BITRATE = 24000;
-
 	private static final int VAD_HANGOVER_FRAMES = 30;
-	private static final int VAD_PREROLL_FRAMES = 10;
+	private static final int VAD_PREROLL_FRAMES = 5;
 
 	private static final int TAIL_SILENCE_FRAMES = 5;
 
@@ -42,7 +37,10 @@ public class AudioCaptureThread extends Thread
 	private int prerollIndex = 0;
 	private int prerollCount = 0;
 	private TargetDataLine line;
-	private OpusEncoder opusEncoder;
+
+	private final short[] pcmShortsBuffer = new short[AudioDeviceManager.FRAME_SIZE_BYTES / 2];
+	private final byte[] gainByteBuffer = new byte[AudioDeviceManager.FRAME_SIZE_BYTES];
+	private final byte[] losslessOutputBuffer = new byte[AudioDeviceManager.FRAME_SIZE_BYTES * 3];
 
 	public AudioCaptureThread(VoiceChatConfig config, NetworkClient networkClient, AudioPlaybackManager playbackManager)
 	{
@@ -102,22 +100,7 @@ public class AudioCaptureThread extends Thread
 			return;
 		}
 
-		try
-		{
-			opusEncoder = new OpusEncoder(48000, 1, OpusApplication.OPUS_APPLICATION_VOIP);
-			opusEncoder.setBitrate(OPUS_BITRATE);
-			opusEncoder.setSignalType(OpusSignal.OPUS_SIGNAL_VOICE);
-			opusEncoder.setComplexity(5);
-		}
-		catch (Exception e)
-		{
-			log.debug("Failed to create Opus encoder", e);
-			closeLine();
-			return;
-		}
-
 		byte[] buffer = new byte[AudioDeviceManager.FRAME_SIZE_BYTES];
-		byte[] opusBuffer = new byte[200];
 
 		while (running.get())
 		{
@@ -125,6 +108,7 @@ public class AudioCaptureThread extends Thread
 			{
 				if(line == null)
 					continue;
+				
 				int bytesRead = line.read(buffer, 0, buffer.length);
 				if (bytesRead <= 0)
 				{
@@ -137,9 +121,12 @@ public class AudioCaptureThread extends Thread
 					continue;
 				}
 
-				boolean shouldTransmit;
+				double rms = calculateRmsAndApplyGain(buffer, bytesRead, gainByteBuffer, config.micGain());
+
+				boolean shouldTransmit = false;
 				boolean sendSilence = false;
-				if (config.voiceMode() == VoiceMode.PUSH_TO_TALK)
+				
+				if ((config.voiceMode() == VoiceMode.PUSH_TO_TALK && pttActive) || (config.voiceMode() == VoiceMode.VOICE_ACTIVITY && isAboveThreshold(rms)))
 				{
 					if (pttActive)
 					{
@@ -155,42 +142,13 @@ public class AudioCaptureThread extends Thread
 					else if (tailSilenceRemaining > 0)
 					{
 						tailSilenceRemaining--;
-						shouldTransmit = false;
-						sendSilence = true;
-					}
-					else
-					{
-						shouldTransmit = false;
-					}
-				}
-				else
-				{
-					if (isAboveVadThreshold(buffer, bytesRead))
-					{
-						vadHangoverRemaining = VAD_HANGOVER_FRAMES;
-						tailSilenceRemaining = TAIL_SILENCE_FRAMES;
-						shouldTransmit = true;
-					}
-					else if (vadHangoverRemaining > 0)
-					{
-						vadHangoverRemaining--;
-						shouldTransmit = true;
-					}
-					else if (tailSilenceRemaining > 0)
-					{
-						tailSilenceRemaining--;
-						shouldTransmit = false;
-						sendSilence = true;
-					}
-					else
-					{
-						shouldTransmit = false;
+                        sendSilence = true;
 					}
 				}
 
 				transmitting = shouldTransmit || sendSilence;
 
-				byte[] pcm = applyGain(buffer, bytesRead, config.micGain());
+				byte[] pcm = gainByteBuffer;
 
 				if (sendSilence)
 				{
@@ -198,8 +156,8 @@ public class AudioCaptureThread extends Thread
 					{
 						try
 						{
-							byte[] silence = new byte[AudioDeviceManager.FRAME_SIZE_BYTES];
-							encodeAndSend(opusBuffer, silence);
+                            Arrays.fill(gainByteBuffer, (byte) 0);
+							encodeAndSend(gainByteBuffer);
 						}
 						catch (Exception e)
 						{
@@ -218,7 +176,7 @@ public class AudioCaptureThread extends Thread
 				{
 					if (config.voiceMode() != VoiceMode.PUSH_TO_TALK)
 					{
-						prerollBuffer[prerollIndex] = pcm == buffer ? buffer.clone() : pcm;
+						prerollBuffer[prerollIndex] = pcm.clone();
 						prerollIndex = (prerollIndex + 1) % VAD_PREROLL_FRAMES;
 						if (prerollCount < VAD_PREROLL_FRAMES)
 						{
@@ -256,7 +214,7 @@ public class AudioCaptureThread extends Thread
 						{
 							try
 							{
-								encodeAndSend(opusBuffer, prerollPcm);
+								encodeAndSend(prerollPcm);
 							}
 							catch (Exception e)
 							{
@@ -275,21 +233,7 @@ public class AudioCaptureThread extends Thread
 
 				if (networkClient.isConnected() && hasNearbyPlayers)
 				{
-					try
-					{
-						int encodedBytes = opusEncoder.encode(pcm, 0, FRAME_SIZE_SAMPLES,
-							opusBuffer, 0, opusBuffer.length);
-						if (encodedBytes > 0)
-						{
-							byte[] opusPayload = new byte[encodedBytes];
-							System.arraycopy(opusBuffer, 0, opusPayload, 0, encodedBytes);
-							networkClient.sendAudioFrame(networkClient.nextSequenceNumber(), opusPayload);
-						}
-					}
-					catch (Exception e)
-					{
-						log.debug("Opus encode failed: {}", e.getMessage());
-					}
+					encodeAndSend(pcm);
 				}
 			}
 			catch (Exception e)
@@ -301,15 +245,14 @@ public class AudioCaptureThread extends Thread
 		closeLine();
 	}
 
-	private void encodeAndSend(byte[] opusBuffer, byte[] silence) throws OpusException {
-		int enc = opusEncoder.encode(silence, 0, FRAME_SIZE_SAMPLES,
-			opusBuffer, 0, opusBuffer.length);
-		if (enc > 0)
-		{
-			byte[] payload = new byte[enc];
-			System.arraycopy(opusBuffer, 0, payload, 0, enc);
-			networkClient.sendAudioFrame(networkClient.nextSequenceNumber(), payload);
-		}
+	private void encodeAndSend(byte[] pcm) {
+		AudioDeviceManager.bytesToShorts(pcm, pcm.length, pcmShortsBuffer);
+		int encodedLength = AudioCodec.encode(pcmShortsBuffer, losslessOutputBuffer);
+
+		byte[] finalPayload = new byte[encodedLength];
+		System.arraycopy(losslessOutputBuffer, 0, finalPayload, 0, encodedLength);
+
+		networkClient.sendAudioFrame(networkClient.nextSequenceNumber(), finalPayload);
 	}
 
 	public void shutdown()
@@ -335,38 +278,31 @@ public class AudioCaptureThread extends Thread
 		}
 	}
 
-	private boolean isAboveVadThreshold(byte[] buffer, int length)
-	{
+	private double calculateRmsAndApplyGain(byte[] input, int length, byte[] output, int gainPercent) {
 		double rms = 0;
 		int samples = length / 2;
-		for (int i = 0; i < length - 1; i += 2)
-		{
-			int sample = (buffer[i] & 0xFF) | (buffer[i + 1] << 8);
-			rms += sample * sample;
-		}
-		rms = Math.sqrt(rms / samples);
+		double gain = gainPercent / 100.0;
 
+		for (int i = 0; i < length - 1; i += 2) {
+			int sample = (input[i] & 0xFF) | (input[i + 1] << 8);
+			if (sample > 32767) sample -= 65536;
+
+			rms += (double)sample * sample;
+			if (gain != 1.0) {
+				sample = (int) Math.max(-32768, Math.min(32767, sample * gain));
+			}
+			
+			output[i] = (byte) (sample & 0xFF);
+			output[i + 1] = (byte) ((sample >> 8) & 0xFF);
+		}
+		return Math.sqrt(rms / samples);
+	}
+
+	private boolean isAboveThreshold(double rms)
+	{
 		double t = config.vadSensitivity() / 100.0;
 		double threshold = 5.0 + (t * t) * 10000;
 		return rms > threshold;
 	}
-
-	private byte[] applyGain(byte[] buffer, int length, int gainPercent)
-	{
-		if (gainPercent == 100)
-		{
-			return buffer;
-		}
-
-		double gain = gainPercent / 100.0;
-		byte[] output = new byte[length];
-		for (int i = 0; i < length - 1; i += 2)
-		{
-			int sample = (buffer[i] & 0xFF) | (buffer[i + 1] << 8);
-			sample = (int) Math.max(-32768, Math.min(32767, sample * gain));
-			output[i] = (byte) (sample & 0xFF);
-			output[i + 1] = (byte) ((sample >> 8) & 0xFF);
-		}
-		return output;
-	}
 }
+

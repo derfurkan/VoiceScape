@@ -9,8 +9,8 @@ import java.util.List;
 @Slf4j
 public class AudioDeviceManager
 {
-	static final AudioFormat FORMAT = new AudioFormat(48000, 16, 1, true, false);
-	private static final int FRAME_SIZE_SAMPLES = 960;
+	static final AudioFormat FORMAT = new AudioFormat(24000, 16, 1, true, false);
+	private static final int FRAME_SIZE_SAMPLES = 480;
 	static final int FRAME_SIZE_BYTES = FRAME_SIZE_SAMPLES * 2;
 
 	public static List<String> getInputDevices()
@@ -87,5 +87,20 @@ public class AudioDeviceManager
 		}
 
 		return null;
+	}
+
+	public static void bytesToShorts(byte[] bytes, int length, short[] shorts) {
+		for (int i = 0; i < length - 1; i += 2) {
+			int sample = (bytes[i] & 0xFF) | (bytes[i + 1] << 8);
+			if (sample > 32767) sample -= 65536;
+			shorts[i / 2] = (short) sample;
+		}
+	}
+
+	public static void shortsToBytes(short[] shorts, byte[] bytes) {
+		for (int i = 0; i < shorts.length; i++) {
+			bytes[i * 2] = (byte) (shorts[i] & 0xFF);
+			bytes[i * 2 + 1] = (byte) ((shorts[i] >> 8) & 0xFF);
+		}
 	}
 }

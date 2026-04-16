@@ -4,10 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -31,10 +28,10 @@ public class NetworkClient
 	private static final byte MSG_SERVER_ERROR = 0x13;
 
 	private static final int PROTOCOL_VERSION = 1; // Change for later versions only for sever compatibillity
-	private static final int MAX_PACKET_SIZE = 1500;
-	private static final int MAX_AUDIO_PAYLOAD = 200;
+	private static final int MAX_PACKET_SIZE = 1400;
+	private static final int MAX_AUDIO_PAYLOAD = 1400;
 	private static final byte MSG_UDP_REGISTER = 0x20;
-	private static final int UDP_BUFFER_SIZE = 512;
+	private static final int UDP_BUFFER_SIZE = 2048; // Increased to fit raw PCM frames plus headers
 	private static final long UDP_REGISTER_INTERVAL_MS = 30_000;
 	private static final long HEARTBEAT_INTERVAL_MS = 10_000;
 	private static final long RECONNECT_DELAY_MS = 5_000;
@@ -314,6 +311,9 @@ public class NetworkClient
 
 	private void writeFramed(DataOutputStream dst, byte[] payload) throws IOException
 	{
+		if(payload.length>MAX_PACKET_SIZE) {
+			throw new IOException("Sending frame too large: " + payload.length);
+		}
 		dst.writeShort(payload.length);
 		dst.write(payload);
 		dst.flush();
