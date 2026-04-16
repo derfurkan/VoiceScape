@@ -15,6 +15,7 @@
 
   ## Default server
   A free public server is available at **`voice-scape.de`**.
+  It may or may not be running depending on when you read this.
   
   ---
 
