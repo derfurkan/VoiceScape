@@ -142,7 +142,7 @@ public class NetworkClient
 			ByteArrayOutputStream entries = new ByteArrayOutputStream();
 			DataOutputStream entryWriter = new DataOutputStream(entries);
 			int count = 0;
-			for (int i = 0; i < limit && count < limit; i++)
+			for (int i = 0; i < limit; i++)
 			{
 				byte[] hashBytes = nearbyHashes.get(i).getBytes(StandardCharsets.UTF_8);
 				if (hashBytes.length > 255)
@@ -154,12 +154,12 @@ public class NetworkClient
 				count++;
 			}
 
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			DataOutputStream msg = new DataOutputStream(baos);
+			ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+			DataOutputStream msg = new DataOutputStream(byteArrayOutputStream);
 			msg.writeByte(MSG_HASH_LIST_UPDATE);
 			msg.writeShort(count);
 			msg.write(entries.toByteArray());
-			writeFramed(out, baos.toByteArray());
+			writeFramed(out, byteArrayOutputStream.toByteArray());
 			lastHashListTime = System.currentTimeMillis();
 		}
 		catch (IOException e)

@@ -89,7 +89,6 @@ public class VoiceChatPlugin extends Plugin {
 	private boolean manuallyDisconnect = false;
 
 	private int tickCounter = 0;
-	private boolean hadNearbyPlayers = false;
 
 	private final Map<String, String> playerHashCache = new HashMap<>();
 	private byte[] lastDailyKey = null;
@@ -175,7 +174,7 @@ public class VoiceChatPlugin extends Plugin {
 		}
 
 		tickCounter++;
-		if (tickCounter < HASH_UPDATE_INTERVAL_TICKS && networkClient.isConnected()) {
+		if (tickCounter < HASH_UPDATE_INTERVAL_TICKS) {
 			return;
 		}
 		tickCounter = 0;
@@ -195,6 +194,8 @@ public class VoiceChatPlugin extends Plugin {
 
 		List<String> nearbyHashes = new ArrayList<>();
 		Map<String, Integer> distanceMap = new HashMap<>();
+		Set<String> activeSpeakers = getActiveSpeakerHashes();
+		Map<String, String> speakerNames = new HashMap<>();
 
 		distanceMap.put(getOrCreateHash(localPlayer.getName()), 0);
 
@@ -213,6 +214,15 @@ public class VoiceChatPlugin extends Plugin {
 				String hash = getOrCreateHash(player.getName());
 				distanceMap.put(hash, distance);
 				nearbyHashes.add(hash);
+
+				if (config.muteAll() && !playbackManager.isPlayerMuted(hash)
+						&& !playbackManager.getUnmutedDefaultHashes().contains(hash)) {
+					playbackManager.mutePlayer(hash);
+				}
+
+				if (activeSpeakers.contains(hash)) {
+					speakerNames.put(player.getName(), hash);
+				}
 			}
 		}
 
@@ -221,25 +231,8 @@ public class VoiceChatPlugin extends Plugin {
 		boolean hasNearby = !nearbyHashes.isEmpty();
 		captureThread.setHasNearbyPlayers(hasNearby);
 
-		if (hasNearby || hadNearbyPlayers) {
+		if (hasNearby) {
 			networkClient.sendHashListUpdate(nearbyHashes);
-		}
-		hadNearbyPlayers = hasNearby;
-
-		Set<String> activeSpeakers = getActiveSpeakerHashes();
-		Set<String> mutedHashes = playbackManager.getMutedHashes();
-		Map<String, String> speakerNames = new HashMap<>();
-		for (Player player : client.getTopLevelWorldView().players()) {
-			if (player == null || player.getName() == null || player == localPlayer) {
-				continue;
-			}
-			String hash = getOrCreateHash(player.getName());
-			if (activeSpeakers.contains(hash) || mutedHashes.contains(hash)) {
-				if(config.muteAll() && !playbackManager.getUnmutedDefaultHashes().contains(hash)) {
-					playbackManager.mutePlayer(hash);
-				}
-				speakerNames.put(player.getName(), hash);
-			}
 		}
 		panel.updatePlayerList(speakerNames);
 	}

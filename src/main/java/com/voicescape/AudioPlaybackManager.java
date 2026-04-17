@@ -84,7 +84,7 @@ public class AudioPlaybackManager extends Thread {
 		line.write(outputByteBuffer, 0, outputByteBuffer.length);
 	}
 
-	public void receiveAudio(String senderIdentityHash, int sequenceNumber, byte[] opusPayload) {
+	public void receiveAudio(String senderIdentityHash, int sequenceNumber, byte[] payload) {
 		if (config.deafened() || mutedHashes.contains(senderIdentityHash)) {
 			return;
 		}
@@ -95,9 +95,8 @@ public class AudioPlaybackManager extends Thread {
 
 		SpeakerState state = speakers.computeIfAbsent(senderIdentityHash, k -> new SpeakerState());
 
-		state.jitterBuffer.put(sequenceNumber, opusPayload);
+		state.jitterBuffer.put(sequenceNumber, payload);
 		state.lastReceiveTime = System.currentTimeMillis();
-		activeSpeakers.add(senderIdentityHash);
 	}
 
 	public void openLine() {
@@ -212,6 +211,7 @@ public class AudioPlaybackManager extends Thread {
 					Thread.sleep(10);
 				}
 
+				// Cleanup speaker
 				speakers.entrySet().removeIf(e -> {
 					if (now - e.getValue().lastReceiveTime > 5000) {
 						activeSpeakers.remove(e.getKey());
