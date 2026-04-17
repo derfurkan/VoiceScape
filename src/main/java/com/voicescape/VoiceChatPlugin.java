@@ -89,6 +89,7 @@ public class VoiceChatPlugin extends Plugin {
 	private boolean manuallyDisconnect = false;
 
 	private int tickCounter = 0;
+	private boolean hadNearbyPlayers = false;
 
 	private final Map<String, String> playerHashCache = new HashMap<>();
 	private byte[] lastDailyKey = null;
@@ -231,9 +232,10 @@ public class VoiceChatPlugin extends Plugin {
 		boolean hasNearby = !nearbyHashes.isEmpty();
 		captureThread.setHasNearbyPlayers(hasNearby);
 
-		if (hasNearby) {
+		if (hasNearby || hadNearbyPlayers) {
 			networkClient.sendHashListUpdate(nearbyHashes);
 		}
+		hadNearbyPlayers = hasNearby;
 		panel.updatePlayerList(speakerNames);
 	}
 
