@@ -32,7 +32,7 @@
   **No.** Your Player Name is hashed with a rotating key (daily rotation on default server) on your side and then sent to the server the server can't reverse it to get your name.
 
   ### Is audio encrypted?
-  Yes. UDP audio is encrypted with a per-session AES key.
+  **Yes.** UDP audio is encrypted with a per-session AES key.
 
   ### I'm having audio issues.
   - Make sure the right input/output device is selected in the panel.
