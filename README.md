@@ -10,9 +10,6 @@
   2. Every game tick, your client reports a list of nearby players **as hashed names**, not real names.
   3. The server only forwards your audio to players who are **mutually nearby** (both sides have to see each other).
 
-  The Plugin is designed in a way that the Server does not know your ingame name, location or world.
-  It only knows what Players are around you but even that is just a list of hashed player names not actual ones.
-
   ---
 
   ## Default server
