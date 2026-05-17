@@ -9,7 +9,6 @@
   1. The plugin opens a connection to a voice server (default: `voice-scape.de`, or your own).
   2. Every game tick, your client reports a list of nearby players **as hashed names**, not real names.
   3. The server only forwards your audio to players who are **mutually nearby** (both sides have to see each other).
-  4. Audio travels over UDP, encrypted with a per-session key.
 
   ---
 
@@ -21,18 +20,16 @@
 
   ## FAQ
 
-  ### Will my IP be leaked to other players?
+  ### Will my IP be leaked to other players? (P2P?)
   **No.** Your IP only touches the voice server. Other players never see your address because all audio is relayed through the server.
-  But whoever runs the server you connect to can see your IP. If you don't trust the operator, host your own Server.
+  But whoever runs the server you connect to can see your IP (Most people can change their IP by restarting the Router if the ISP offers dynamic IPs). 
+  To prevent this you can tunnel your Connection through a VPN but make sure it supports Port Forwarding.
 
   ### Is my RuneScape name sent to the server?
   **No.** Your Player Name is hashed with a rotating key (daily rotation on default server) on your side and then sent to the server the server can't reverse it to get your name.
 
-  ### Why should I trust the default server (`voice-scape.de`)?
-  The server does not receive your name, your account details, or your IP beyond what it needs to route audio. Alternatively you can run your own server the software is free and open-source [here](https://github.com/derfurkan/VoiceScape-Server).
-
   ### Is audio encrypted?
-  Yes. UDP audio is encrypted with a per-session AES key.
+  **Yes.** UDP audio is encrypted with a per-session AES key.
 
   ### I'm having audio issues.
   - Make sure the right input/output device is selected in the panel.
