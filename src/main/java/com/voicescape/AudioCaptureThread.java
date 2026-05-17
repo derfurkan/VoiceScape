@@ -10,19 +10,24 @@ import javax.sound.sampled.DataLine;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.TargetDataLine;
 import java.util.Arrays;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
-public class AudioCaptureThread extends Thread
+public class AudioCaptureThread
 {
 	private final VoiceChatConfig config;
 	private final NetworkClient networkClient;
 	private final AudioPlaybackManager playbackManager;
 	private final AtomicBoolean running = new AtomicBoolean(false);
-	private static final int HANGOVER_FRAMES = 25;
-	private static final int VAD_PREROLL_FRAMES = 5;
+	private ScheduledExecutorService scheduler;
+	private Future<?> captureTask;
+	private static final int HANGOVER_FRAMES = 40;
+	private static final int VAD_PREROLL_FRAMES = 8;
 
-	private static final int TAIL_SILENCE_FRAMES = 5;
+	private static final int TAIL_SILENCE_FRAMES = 10;
 
 	@Setter
     private volatile boolean pttActive = false;
@@ -44,11 +49,26 @@ public class AudioCaptureThread extends Thread
 
 	public AudioCaptureThread(VoiceChatConfig config, NetworkClient networkClient, AudioPlaybackManager playbackManager)
 	{
-		super("VoiceScape-Capture");
-		setDaemon(true);
 		this.config = config;
 		this.networkClient = networkClient;
 		this.playbackManager = playbackManager;
+	}
+
+	public synchronized void start()
+	{
+		if (running.get())
+		{
+			return;
+		}
+
+		running.set(true);
+		scheduler = Executors.newSingleThreadScheduledExecutor(r ->
+		{
+			Thread thread = new Thread(r, "VoiceScape-Capture");
+			thread.setDaemon(true);
+			return thread;
+		});
+		captureTask = scheduler.submit(this::captureLoop);
 	}
 
     public void openLine()
@@ -88,15 +108,14 @@ public class AudioCaptureThread extends Thread
 		}
 	}
 
-	@Override
-	public void run()
+	private void captureLoop()
 	{
-		running.set(true);
 		openLine();
 
 		if (line == null)
 		{
 			log.debug("No capture line available, capture thread exiting");
+			running.set(false);
 			return;
 		}
 
@@ -250,6 +269,7 @@ public class AudioCaptureThread extends Thread
 		}
 
 		closeLine();
+		running.set(false);
 	}
 
 	private void encodeAndSend(byte[] pcm) {
@@ -265,7 +285,18 @@ public class AudioCaptureThread extends Thread
 	public void shutdown()
 	{
 		running.set(false);
-		this.interrupt();
+		closeLine();
+
+		if (captureTask != null)
+		{
+			captureTask.cancel(true);
+			captureTask = null;
+		}
+		if (scheduler != null)
+		{
+			scheduler.shutdownNow();
+			scheduler = null;
+		}
 	}
 
 	public void closeLine()

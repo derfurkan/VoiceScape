@@ -11,15 +11,21 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
-public class AudioPlaybackManager extends Thread {
+public class AudioPlaybackManager {
 	private static final int MAX_SPEAKERS = 10;
 	private static final int FRAME_SIZE_SAMPLES = AudioDeviceManager.FRAME_SIZE_BYTES / 2;
 
 	private final VoiceChatConfig config;
 	private final AtomicBoolean running = new AtomicBoolean(false);
+	private ScheduledExecutorService scheduler;
+	private ScheduledFuture<?> playbackTask;
 	private final Map<String, SpeakerState> speakers = new ConcurrentHashMap<>();
 	@Getter
 	private final Set<String> activeSpeakers = ConcurrentHashMap.newKeySet();
@@ -35,9 +41,35 @@ public class AudioPlaybackManager extends Thread {
 	private final byte[] outputByteBuffer = new byte[AudioDeviceManager.FRAME_SIZE_BYTES];
 
 	public AudioPlaybackManager(VoiceChatConfig config) {
-		super("VoiceScape-Playback");
-		setDaemon(true);
 		this.config = config;
+	}
+
+	public synchronized void start() {
+		if (running.get()) {
+			return;
+		}
+
+		running.set(true);
+		scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+			Thread thread = new Thread(r, "VoiceScape-Playback");
+			thread.setDaemon(true);
+			return thread;
+		});
+		scheduler.execute(() -> {
+			openLine();
+			if (line == null) {
+				log.debug("No playback line available, playback scheduler exiting");
+				running.set(false);
+				scheduler.shutdown();
+				return;
+			}
+
+			playbackTask = scheduler.scheduleWithFixedDelay(
+				this::playbackTick,
+				0,
+				10,
+				TimeUnit.MILLISECONDS);
+		});
 	}
 
 	public void flushLine() {
@@ -117,7 +149,7 @@ public class AudioPlaybackManager extends Thread {
 				line = (SourceDataLine) AudioSystem.getLine(info);
 			}
 
-			int bufferBytes = AudioDeviceManager.FRAME_SIZE_BYTES * 4;
+			int bufferBytes = AudioDeviceManager.FRAME_SIZE_BYTES * 8;
 			line.open(AudioDeviceManager.FORMAT, bufferBytes);
 			line.start();
 			log.debug("Audio playback line opened (buffer {} bytes)", bufferBytes);
@@ -127,113 +159,107 @@ public class AudioPlaybackManager extends Thread {
 		}
 	}
 
-	@Override
-	public void run() {
-		running.set(true);
-		openLine();
-
-		if (line == null) {
-			log.debug("No playback line available, playback thread exiting");
+	private void playbackTick() {
+		if (!running.get()) {
 			return;
 		}
 
-		while (running.get()) {
-			try {
-				float[] mixBuffer = new float[FRAME_SIZE_SAMPLES];
-				int senderCount = 0;
+		try {
+			float[] mixBuffer = new float[FRAME_SIZE_SAMPLES];
+			int senderCount = 0;
 
-				long now = System.currentTimeMillis();
-				for (Map.Entry<String, SpeakerState> entry : speakers.entrySet()) {
-					SpeakerState state = entry.getValue();
+			long now = System.currentTimeMillis();
+			for (Map.Entry<String, SpeakerState> entry : speakers.entrySet()) {
+				SpeakerState state = entry.getValue();
 
-					if (now - state.lastReceiveTime > 1000) {
-						activeSpeakers.remove(entry.getKey());
+				if (now - state.lastReceiveTime > 1500) {
+					activeSpeakers.remove(entry.getKey());
+					continue;
+				}
+
+				Integer distance = nearbyDistances.get(entry.getKey());
+				if (distance == null) {
+					activeSpeakers.remove(entry.getKey());
+					continue;
+				}
+
+				float distScale = 1.0f - (float) (Math.log(distance + 1) / Math.log(16));
+				distScale = Math.max(0f, distScale);
+				if (distScale <= 0f) {
+					activeSpeakers.remove(entry.getKey());
+					continue;
+				}
+
+				if (!state.jitterBuffer.isReady() || !state.jitterBuffer.canPoll()) {
+					continue;
+				}
+
+				byte[] payload = state.jitterBuffer.poll();
+
+				try {
+					if (payload == null)
 						continue;
-					}
 
-					Integer distance = nearbyDistances.get(entry.getKey());
-					if (distance == null) {
-						activeSpeakers.remove(entry.getKey());
-						continue;
-					}
+					AudioCodec.decode(payload, 0, payload.length, decodedBuffer);
 
-					float distScale = 1.0f - (float) (Math.log(distance + 1) / Math.log(16));
-					distScale = Math.max(0f, distScale);
-					if (distScale <= 0f) {
-						activeSpeakers.remove(entry.getKey());
-						continue;
-					}
-
-					if (!state.jitterBuffer.isReady() || !state.jitterBuffer.canPoll()) {
-						continue;
-					}
-
-					byte[] payload = state.jitterBuffer.poll();
-
-					try {
-						if (payload == null)
-							continue;
-
-						AudioCodec.decode(payload, 0, payload.length, decodedBuffer);
-
-						for (int i = 0; i < decodedBuffer.length; i++) {
-							if (i < mixBuffer.length) {
-								mixBuffer[i] += decodedBuffer[i] * distScale;
-							}
+					for (int i = 0; i < decodedBuffer.length; i++) {
+						if (i < mixBuffer.length) {
+							mixBuffer[i] += decodedBuffer[i] * distScale;
 						}
-						senderCount++;
-						activeSpeakers.add(entry.getKey());
-					} catch (Exception e) {
-						log.debug("Audio processing error for sender {}: {}", entry.getKey(), e.getMessage());
 					}
+					senderCount++;
+					activeSpeakers.add(entry.getKey());
+				} catch (Exception e) {
+					log.debug("Audio processing error for sender {}: {}", entry.getKey(), e.getMessage());
 				}
-
-				if (senderCount > 0) {
-					double volume = config.outputVolume() / 100.0;
-					
-					float maxVal = 0;
-					for (float v : mixBuffer) {
-						maxVal = Math.max(maxVal, Math.abs(v));
-					}
-					
-					float masterScale = 1.0f;
-					if (maxVal > 32767) {
-						masterScale = 32767f / maxVal;
-					}
-
-					for (int i = 0; i < mixBuffer.length; i++) {
-						loopbackShortBuffer[i] = (short) Math.max(-32768, Math.min(32767, mixBuffer[i] * masterScale * volume));
-					}
-					
-					AudioDeviceManager.shortsToBytes(loopbackShortBuffer, outputByteBuffer);
-					line.write(outputByteBuffer, 0, outputByteBuffer.length);
-				} else {
-					Thread.sleep(10);
-				}
-
-				// Cleanup speaker
-				speakers.entrySet().removeIf(e -> {
-					if (now - e.getValue().lastReceiveTime > 5000) {
-						activeSpeakers.remove(e.getKey());
-						e.getValue().jitterBuffer.reset();
-						return true;
-					}
-					return false;
-				});
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				break;
-			} catch (Exception e) {
-				log.debug("Error in audio playback loop", e);
 			}
-		}
 
-		closeLine();
+			if (senderCount > 0) {
+				double volume = config.outputVolume() / 100.0;
+				
+				float maxVal = 0;
+				for (float v : mixBuffer) {
+					maxVal = Math.max(maxVal, Math.abs(v));
+				}
+				
+				float masterScale = 1.0f;
+				if (maxVal > 32767) {
+					masterScale = 32767f / maxVal;
+				}
+
+				for (int i = 0; i < mixBuffer.length; i++) {
+					loopbackShortBuffer[i] = (short) Math.max(-32768, Math.min(32767, mixBuffer[i] * masterScale * volume));
+				}
+				
+				AudioDeviceManager.shortsToBytes(loopbackShortBuffer, outputByteBuffer);
+				line.write(outputByteBuffer, 0, outputByteBuffer.length);
+			}
+
+			// Cleanup speaker
+			speakers.entrySet().removeIf(e -> {
+				if (now - e.getValue().lastReceiveTime > 8000) {
+					activeSpeakers.remove(e.getKey());
+					e.getValue().jitterBuffer.reset();
+					return true;
+				}
+				return false;
+			});
+		} catch (Exception e) {
+			log.debug("Error in audio playback tick", e);
+		}
 	}
 
 	public void shutdown() {
 		running.set(false);
-		this.interrupt();
+		if (playbackTask != null) {
+			playbackTask.cancel(true);
+			playbackTask = null;
+		}
+		closeLine();
+		if (scheduler != null) {
+			scheduler.shutdownNow();
+			scheduler = null;
+		}
 	}
 
 	public void closeLine() {

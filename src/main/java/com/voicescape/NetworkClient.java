@@ -8,6 +8,11 @@ import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -59,9 +64,10 @@ public class NetworkClient
 	private volatile InetAddress serverAddr;
 	private volatile int serverPort;
 
-	private Thread readThread;
-	private Thread heartbeatThread;
-	private Thread udpReceiveThread;
+	private ScheduledExecutorService scheduler;
+	private ScheduledFuture<?> connectionTask;
+	private ScheduledFuture<?> heartbeatTask;
+	private Future<?> udpReceiveTask;
 
 	@Setter
     private volatile Consumer<String> statusListener;
@@ -94,9 +100,13 @@ public class NetworkClient
 		this.playerName = playerName;
 		running.set(true);
 
-		readThread = new Thread(this::connectionLoop, "VoiceScape-Network");
-		readThread.setDaemon(true);
-		readThread.start();
+		scheduler = Executors.newScheduledThreadPool(3, r ->
+		{
+			Thread thread = new Thread(r, "VoiceScape-Network");
+			thread.setDaemon(true);
+			return thread;
+		});
+		scheduleConnection(0);
 	}
 
 	public void disconnect()
@@ -104,17 +114,40 @@ public class NetworkClient
 		running.set(false);
 		reportStatus("Disconnected");
 		closeSocket();
-		if (readThread != null)
+		cancelScheduledTasks();
+		if (scheduler != null)
 		{
-			readThread.interrupt();
+			scheduler.shutdownNow();
+			scheduler = null;
 		}
-		if (heartbeatThread != null)
+	}
+
+	private synchronized void scheduleConnection(long delayMs)
+	{
+		if (!running.get() || scheduler == null || scheduler.isShutdown())
 		{
-			heartbeatThread.interrupt();
+			return;
 		}
-		if (udpReceiveThread != null)
+
+		connectionTask = scheduler.schedule(this::connectionLoop, delayMs, TimeUnit.MILLISECONDS);
+	}
+
+	private void cancelScheduledTasks()
+	{
+		if (connectionTask != null)
 		{
-			udpReceiveThread.interrupt();
+			connectionTask.cancel(false);
+			connectionTask = null;
+		}
+		if (heartbeatTask != null)
+		{
+			heartbeatTask.cancel(false);
+			heartbeatTask = null;
+		}
+		if (udpReceiveTask != null)
+		{
+			udpReceiveTask.cancel(false);
+			udpReceiveTask = null;
 		}
 	}
 
@@ -225,87 +258,81 @@ public class NetworkClient
 
 	private void connectionLoop()
 	{
-		while (running.get())
+		if (!running.get())
 		{
-			try
-			{
-				String address = config.serverAddress();
-				String[] parts = address.split(":");
-				String host = parts[0];
-				int port = parts.length > 1 ? Integer.parseInt(parts[1]) : 5555;
+			return;
+		}
 
-				log.info("Connecting to voice server at {}:{}", host, port);
-				reportStatus("Connecting to " + host + ":" + port + "...");
+		try
+		{
+			String address = config.serverAddress();
+			String[] parts = address.split(":");
+			String host = parts[0];
+			int port = parts.length > 1 ? Integer.parseInt(parts[1]) : 5555;
 
-				socket = createSocket(host, port);
-				socket.setTcpNoDelay(true);
-				socket.setKeepAlive(true);
-				socket.setSoTimeout((int) HANDSHAKE_TIMEOUT_MS);
+			log.info("Connecting to voice server at {}:{}", host, port);
+			reportStatus("Connecting to " + host + ":" + port + "...");
 
-				out = new DataOutputStream(socket.getOutputStream());
-				in = new DataInputStream(socket.getInputStream());
-				performServerHandshake();
+			socket = createSocket(host, port);
+			socket.setTcpNoDelay(true);
+			socket.setKeepAlive(true);
+			socket.setSoTimeout((int) HANDSHAKE_TIMEOUT_MS);
 
-				socket.setSoTimeout(0);
-				log.info("Connected to voice server, session: {}", sessionId);
-				reportStatus("Connected");
-				openUdpChannel(host, port);
-				startHeartbeat();
+			out = new DataOutputStream(socket.getOutputStream());
+			in = new DataInputStream(socket.getInputStream());
+			performServerHandshake();
 
-				while (running.get() && isConnected())
-				{
-					readMessage();
-				}
-			}
-			catch (java.net.ConnectException e)
-			{
-				if (running.get())
-				{
-					log.warn("Connection refused: {}", e.getMessage());
-					reportStatus("Connection refused");
-				}
-			}
-			catch (java.net.UnknownHostException e)
-			{
-				if (running.get())
-				{
-					log.warn("Unknown host: {}", e.getMessage());
-					reportStatus("Unknown host");
-				}
-			}
-			catch (java.net.SocketTimeoutException e)
-			{
-				if (running.get())
-				{
-					log.warn("Connection timed out: {}", e.getMessage());
-					reportStatus("No response from server");
-				}
-			}
-			catch (Exception e)
-			{
-				if (running.get())
-				{
-					log.warn("Connection failed: {}", e.getMessage());
-				}
-			}
-			finally
-			{
-				closeSocket();
-			}
+			socket.setSoTimeout(0);
+			log.info("Connected to voice server, session: {}", sessionId);
+			reportStatus("Connected");
+			openUdpChannel(host, port);
+			startHeartbeat();
 
+			while (running.get() && isConnected())
+			{
+				readMessage();
+			}
+		}
+		catch (java.net.ConnectException e)
+		{
 			if (running.get())
 			{
-				try
-				{
-					log.debug("Reconnecting in {}ms", RECONNECT_DELAY_MS);
-					Thread.sleep(RECONNECT_DELAY_MS);
-				}
-				catch (InterruptedException e)
-				{
-					Thread.currentThread().interrupt();
-					break;
-				}
+				log.warn("Connection refused: {}", e.getMessage());
+				reportStatus("Connection refused");
 			}
+		}
+		catch (java.net.UnknownHostException e)
+		{
+			if (running.get())
+			{
+				log.warn("Unknown host: {}", e.getMessage());
+				reportStatus("Unknown host");
+			}
+		}
+		catch (java.net.SocketTimeoutException e)
+		{
+			if (running.get())
+			{
+				log.warn("Connection timed out: {}", e.getMessage());
+				reportStatus("No response from server");
+			}
+		}
+		catch (Exception e)
+		{
+			if (running.get())
+			{
+				log.warn("Connection failed: {}", e.getMessage());
+			}
+		}
+		finally
+		{
+			closeSocket();
+		}
+
+		if (running.get())
+		{
+			log.debug("Reconnecting in {}ms", RECONNECT_DELAY_MS);
+			scheduleConnection(RECONNECT_DELAY_MS);
 		}
 	}
 
@@ -451,52 +478,56 @@ public class NetworkClient
 
 	private void startHeartbeat()
 	{
-		if (heartbeatThread != null)
+		if (heartbeatTask != null)
 		{
-			heartbeatThread.interrupt();
+			heartbeatTask.cancel(false);
 		}
-		heartbeatThread = new Thread(() ->
+		if (scheduler == null || scheduler.isShutdown())
 		{
-			while (running.get() && isConnected())
-			{
-				try
-				{
-					Thread.sleep(HEARTBEAT_INTERVAL_MS);
-					long timeSinceLastHash = System.currentTimeMillis() - lastHashListTime;
-					if (timeSinceLastHash >= HEARTBEAT_INTERVAL_MS)
-					{
-						synchronized (this)
-						{
-							if (out != null)
-							{
-								ByteArrayOutputStream baos = new ByteArrayOutputStream();
-								DataOutputStream msg = new DataOutputStream(baos);
-								msg.writeByte(MSG_HASH_LIST_UPDATE);
-								msg.writeShort(0);
-								writeFramed(out, baos.toByteArray());
-							}
-						}
-					}
+			return;
+		}
+		heartbeatTask = scheduler.scheduleWithFixedDelay(
+			this::sendHeartbeat,
+			HEARTBEAT_INTERVAL_MS,
+			HEARTBEAT_INTERVAL_MS,
+			TimeUnit.MILLISECONDS);
+	}
 
-					if (System.currentTimeMillis() - lastUdpRegisterTime >= UDP_REGISTER_INTERVAL_MS)
+	private void sendHeartbeat()
+	{
+		if (!running.get() || !isConnected())
+		{
+			return;
+		}
+
+		try
+		{
+			long timeSinceLastHash = System.currentTimeMillis() - lastHashListTime;
+			if (timeSinceLastHash >= HEARTBEAT_INTERVAL_MS)
+			{
+				synchronized (this)
+				{
+					if (out != null)
 					{
-						sendUdpRegistration();
+						ByteArrayOutputStream baos = new ByteArrayOutputStream();
+						DataOutputStream msg = new DataOutputStream(baos);
+						msg.writeByte(MSG_HASH_LIST_UPDATE);
+						msg.writeShort(0);
+						writeFramed(out, baos.toByteArray());
 					}
-				}
-				catch (InterruptedException e)
-				{
-					Thread.currentThread().interrupt();
-					break;
-				}
-				catch (IOException e)
-				{
-					log.debug("Heartbeat failed: {}", e.getMessage());
-					break;
 				}
 			}
-		}, "VoiceScape-Heartbeat");
-		heartbeatThread.setDaemon(true);
-		heartbeatThread.start();
+
+			if (System.currentTimeMillis() - lastUdpRegisterTime >= UDP_REGISTER_INTERVAL_MS)
+			{
+				sendUdpRegistration();
+			}
+		}
+		catch (IOException e)
+		{
+			log.debug("Heartbeat failed: {}", e.getMessage());
+			closeSocket();
+		}
 	}
 
 	private synchronized void closeSocket()
@@ -526,7 +557,7 @@ public class NetworkClient
 			serverPort = port;
 			udpSocket = new DatagramSocket();
 			sendUdpRegistration();
-			startUdpReceiveThread();
+			startUdpReceiveTask();
 			log.debug("UDP audio channel opened to {}:{}", host, port);
 		}
 		catch (Exception e)
@@ -560,9 +591,18 @@ public class NetworkClient
 		}
 	}
 
-	private void startUdpReceiveThread()
+	private void startUdpReceiveTask()
 	{
-		udpReceiveThread = new Thread(() ->
+		if (udpReceiveTask != null)
+		{
+			udpReceiveTask.cancel(false);
+		}
+		if (scheduler == null || scheduler.isShutdown())
+		{
+			return;
+		}
+
+		udpReceiveTask = scheduler.submit(() ->
 		{
 			byte[] buf = new byte[UDP_BUFFER_SIZE];
 			if (udpSocket == null)
@@ -590,9 +630,7 @@ public class NetworkClient
 					}
 				}
 			}
-		}, "VoiceScape-UDP-Receive");
-		udpReceiveThread.setDaemon(true);
-		udpReceiveThread.start();
+		});
 	}
 
 	/**

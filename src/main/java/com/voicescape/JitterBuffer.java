@@ -5,10 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class JitterBuffer
 {
-	private static final int BUFFER_SIZE = 32;
+	private static final int BUFFER_SIZE = 64;
 	private static final int MASK = BUFFER_SIZE - 1;
 
-	private static final int PREBUFFER_FRAMES = 6;
+	private static final int PREBUFFER_FRAMES = 10;
 
 	private final byte[][] slots = new byte[BUFFER_SIZE][];
 	private final boolean[] occupied = new boolean[BUFFER_SIZE];
