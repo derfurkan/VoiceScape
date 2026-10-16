@@ -33,7 +33,7 @@ public class NetworkClient
 	private static final byte MSG_SERVER_ERROR = 0x13;
 
 	private static final int PROTOCOL_VERSION = 1; // Change for later versions only for sever compatibillity
-	private static final int MAX_TCP_FRAME_SIZE = 1500;
+	private static final int MAX_TCP_FRAME_SIZE = 4096 - Short.BYTES;
 	private static final int MAX_AUDIO_PAYLOAD = 1400;
 	private static final byte MSG_UDP_REGISTER = 0x20;
 	private static final int UDP_BUFFER_SIZE = 2048; // Increased to fit raw PCM frames plus headers
@@ -182,6 +182,12 @@ public class NetworkClient
 				{
 					continue;
 				}
+
+				if (1 + Short.BYTES + entries.size() + Short.BYTES + hashBytes.length > MAX_TCP_FRAME_SIZE)
+				{
+					break;
+				}
+				
 				entryWriter.writeShort(hashBytes.length);
 				entryWriter.write(hashBytes);
 				count++;
