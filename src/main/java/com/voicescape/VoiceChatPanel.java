@@ -408,7 +408,7 @@ public class VoiceChatPanel extends PluginPanel
 							pm.getUnmutedDefaultHashes().remove(hash);
 							pm.mutePlayer(hash);
 						}
-						
+
 						muteBtn.setText(nowMuted ? "Mute" : "Unmute");
 						muteBtn.setBackground(nowMuted ? new Color(120, 30, 30) : ColorScheme.DARKER_GRAY_COLOR);
 						nameLabel.setForeground(nowMuted ? Color.WHITE : new Color(150, 150, 150));
@@ -763,3 +763,4 @@ public class VoiceChatPanel extends PluginPanel
 		return sb.toString();
 	}
 }
+

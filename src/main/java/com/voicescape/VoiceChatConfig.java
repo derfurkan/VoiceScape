@@ -101,5 +101,6 @@ public interface VoiceChatConfig extends Config
 	{
 		return true;
 	}
-	
+
 }
+

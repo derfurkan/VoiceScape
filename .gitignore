@@ -10,6 +10,7 @@ nbproject/
 bin/
 .vscode/
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 *.war
 *.nar
 *.ear
