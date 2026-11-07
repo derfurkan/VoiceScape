@@ -20,19 +20,19 @@ import java.util.function.Consumer;
 @Slf4j
 public class NetworkClient
 {
-	
+
 	private static final byte MSG_HELLO = 0x01;
 	private static final byte MSG_HASH_LIST_UPDATE = 0x02;
 	private static final byte MSG_AUDIO_FRAME = 0x03;
 	private static final byte MSG_IDENTITY = 0x04;
 
-	
+
 	private static final byte MSG_HELLO_ACK = 0x10;
 	private static final byte MSG_KEY_ROTATION = 0x11;
 	private static final byte MSG_AUDIO_FRAME_FROM_SERVER = 0x12;
 	private static final byte MSG_SERVER_ERROR = 0x13;
 
-	private static final int PROTOCOL_VERSION = 1; // Change for later versions only for sever compatibillity
+	private static final int PROTOCOL_VERSION = 2; // Change for later versions only for sever compatibillity
 	private static final int MAX_TCP_FRAME_SIZE = 4096 - Short.BYTES;
 	private static final int MAX_AUDIO_PAYLOAD = 1400;
 	private static final byte MSG_UDP_REGISTER = 0x20;
@@ -43,6 +43,14 @@ public class NetworkClient
 	private static final long HANDSHAKE_TIMEOUT_MS = 10_000;
 
 	private final VoiceChatConfig config;
+    private final java.util.Set<String> receivedNonces = new java.util.LinkedHashSet<>();
+    public synchronized boolean acceptNonce(byte[] nonce) {
+        String id = java.util.Base64.getEncoder().encodeToString(nonce);
+        if (!receivedNonces.add(id)) return false;
+        if (receivedNonces.size() > 4096) receivedNonces.remove(receivedNonces.iterator().next());
+        return true;
+    }
+
 	private final AudioPlaybackManager playbackManager;
 	@Getter
 	private final AtomicBoolean running = new AtomicBoolean(false);
@@ -187,7 +195,7 @@ public class NetworkClient
 				{
 					break;
 				}
-				
+
 				entryWriter.writeShort(hashBytes.length);
 				entryWriter.write(hashBytes);
 				count++;
@@ -253,7 +261,16 @@ public class NetworkClient
 
 	private Socket createSocket(String host, int port) throws Exception
 	{
-		return new Socket(host, port);
+		javax.net.ssl.SSLSocket tls = (javax.net.ssl.SSLSocket) javax.net.ssl.SSLSocketFactory.getDefault().createSocket();
+        try {
+            tls.connect(new InetSocketAddress(host, port), (int) HANDSHAKE_TIMEOUT_MS);
+            tls.setSoTimeout((int) HANDSHAKE_TIMEOUT_MS);
+            javax.net.ssl.SSLParameters parameters = tls.getSSLParameters();
+            parameters.setEndpointIdentificationAlgorithm("HTTPS");
+            tls.setSSLParameters(parameters);
+            tls.startHandshake();
+            return tls;
+        } catch (Exception e) { tls.close(); throw e; }
 	}
 
 	public void performServerHandshake() throws IOException {
@@ -371,7 +388,7 @@ public class NetworkClient
 
 	private synchronized void sendHello() throws IOException
 	{
-		byte[] sessionIdBytes = sessionId.getBytes(StandardCharsets.UTF_8);
+		byte[] sessionIdBytes = new byte[0];
 		ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 		DataOutputStream msg = new DataOutputStream(byteArrayOutputStream);
 		msg.writeByte(MSG_HELLO);
@@ -562,6 +579,7 @@ public class NetworkClient
 			serverAddr = InetAddress.getByName(host);
 			serverPort = port;
 			udpSocket = new DatagramSocket();
+            udpSocket.connect(serverAddr, serverPort);
 			sendUdpRegistration();
 			startUdpReceiveTask();
 			log.debug("UDP audio channel opened to {}:{}", host, port);
@@ -587,6 +605,7 @@ public class NetworkClient
 			msg.writeByte(MSG_UDP_REGISTER);
 			msg.writeShort(sidBytes.length);
 			msg.write(sidBytes);
+            msg.write(UdpCrypto.encrypt(udpKey, -1, sidBytes));
 			byte[] data = baos.toByteArray();
 			udpSocket.send(new DatagramPacket(data, data.length, serverAddr, serverPort));
 			lastUdpRegisterTime = System.currentTimeMillis();
@@ -670,7 +689,7 @@ public class NetworkClient
 			int seq = msg.readInt();
 
 			int payloadLen = length - 1 - 2 - hashLen - 4;
-			if (payloadLen <= 0 || payloadLen > MAX_AUDIO_PAYLOAD)
+			if (payloadLen <= 0 || payloadLen > MAX_AUDIO_PAYLOAD + 28)
 			{
 				return;
 			}
@@ -682,7 +701,8 @@ public class NetworkClient
 			{
 				return;
 			}
-			byte[] payload = UdpCrypto.decrypt(key, seq, encrypted);
+			byte[] payload = UdpCrypto.decrypt(key, seq, encrypted, senderHash);
+            if (!acceptNonce(java.util.Arrays.copyOf(encrypted, 12))) return;
 
 			playbackManager.receiveAudio(
 				new String(senderHash, StandardCharsets.UTF_8), seq, payload);
@@ -704,3 +724,4 @@ public class NetworkClient
 		serverAddr = null;
 	}
 }
+

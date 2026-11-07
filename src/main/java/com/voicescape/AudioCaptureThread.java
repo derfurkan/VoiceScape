@@ -127,7 +127,7 @@ public class AudioCaptureThread
 			{
 				if(line == null)
 					continue;
-				
+
 				int bytesRead = line.read(buffer, 0, buffer.length);
 				if (bytesRead <= 0)
 				{
@@ -161,7 +161,7 @@ public class AudioCaptureThread
 					tailSilenceRemaining = TAIL_SILENCE_FRAMES;
 					shouldTransmit = true;
 				}
-				else if (hangoverRemaining > 0)
+				else if (config.voiceMode() != VoiceMode.PUSH_TO_TALK && hangoverRemaining > 0)
 				{
 					hangoverRemaining--;
 					shouldTransmit = true;
@@ -217,7 +217,7 @@ public class AudioCaptureThread
 					}
 					continue;
 				}
-				
+
 				if (!wasTransmitting && prerollCount > 0)
 				{
 					int start = (prerollIndex - prerollCount + VAD_PREROLL_FRAMES) % VAD_PREROLL_FRAMES;
@@ -329,7 +329,7 @@ public class AudioCaptureThread
 			if (gain != 1.0) {
 				sample = (int) Math.max(-32768, Math.min(32767, sample * gain));
 			}
-			
+
 			output[i] = (byte) (sample & 0xFF);
 			output[i + 1] = (byte) ((sample >> 8) & 0xFF);
 		}
@@ -343,4 +343,5 @@ public class AudioCaptureThread
 		return rms > threshold;
 	}
 }
+
 

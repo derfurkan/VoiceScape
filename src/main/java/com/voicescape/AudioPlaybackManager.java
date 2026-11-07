@@ -103,15 +103,15 @@ public class AudioPlaybackManager {
 		if (config.deafened() || line == null) {
 			return;
 		}
-		
+
 		double volume = (config.outputVolume() / 100.0);
-		
+
 		AudioDeviceManager.bytesToShorts(pcm, pcm.length, loopbackShortBuffer);
-		
+
 		for (int i = 0; i < loopbackShortBuffer.length; i++) {
 			loopbackShortBuffer[i] = (short) Math.max(-32768, Math.min(32767, loopbackShortBuffer[i] * volume));
 		}
-		
+
 		AudioDeviceManager.shortsToBytes(loopbackShortBuffer, outputByteBuffer);
 		line.write(outputByteBuffer, 0, outputByteBuffer.length);
 	}
@@ -170,7 +170,12 @@ public class AudioPlaybackManager {
 
 			long now = System.currentTimeMillis();
 			for (Map.Entry<String, SpeakerState> entry : speakers.entrySet()) {
-				SpeakerState state = entry.getValue();
+                SpeakerState state = entry.getValue();
+                if (config.deafened() || mutedHashes.contains(entry.getKey())) {
+                    state.jitterBuffer.reset();
+                    activeSpeakers.remove(entry.getKey());
+                    continue;
+                }
 
 				if (now - state.lastReceiveTime > 1500) {
 					activeSpeakers.remove(entry.getKey());
@@ -216,12 +221,12 @@ public class AudioPlaybackManager {
 
 			if (senderCount > 0) {
 				double volume = config.outputVolume() / 100.0;
-				
+
 				float maxVal = 0;
 				for (float v : mixBuffer) {
 					maxVal = Math.max(maxVal, Math.abs(v));
 				}
-				
+
 				float masterScale = 1.0f;
 				if (maxVal > 32767) {
 					masterScale = 32767f / maxVal;
@@ -230,7 +235,7 @@ public class AudioPlaybackManager {
 				for (int i = 0; i < mixBuffer.length; i++) {
 					loopbackShortBuffer[i] = (short) Math.max(-32768, Math.min(32767, mixBuffer[i] * masterScale * volume));
 				}
-				
+
 				AudioDeviceManager.shortsToBytes(loopbackShortBuffer, outputByteBuffer);
 				line.write(outputByteBuffer, 0, outputByteBuffer.length);
 			}
@@ -279,3 +284,4 @@ public class AudioPlaybackManager {
 		volatile long lastReceiveTime = System.currentTimeMillis();
 	}
 }
+

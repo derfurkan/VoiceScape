@@ -221,9 +221,7 @@ public class VoiceChatPlugin extends Plugin {
 					playbackManager.mutePlayer(hash);
 				}
 
-				if (activeSpeakers.contains(hash)) {
-					speakerNames.put(player.getName(), hash);
-				}
+				speakerNames.put(player.getName(), hash);
 			}
 		}
 
@@ -276,3 +274,4 @@ public class VoiceChatPlugin extends Plugin {
 		return configManager.getConfig(VoiceChatConfig.class);
 	}
 }
+
